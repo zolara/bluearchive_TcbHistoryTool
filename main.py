@@ -6,8 +6,10 @@ import datetime
 import numpy as np
 import csv
 import shutil
+import configparser
+import subprocess
 from string import punctuation
-from paddleocr import PPStructure,draw_structure_result,save_structure_res
+from paddleocr import PPStructure
 import pandas as pd
 from jinja2 import Template
 
@@ -32,14 +34,17 @@ class MainWindow(QWidget):
 		self.fname = ''
 		self.picname = ''
 		self.userid =''
+		self.cf = configparser.ConfigParser()
+		self.cf.read("./conf.ini")
+		self.last_filepath = self.cf.get("filepath","last_filepath")
+		self.server_la = self.cf.get("server","server_la")
+		print(self.last_filepath)
 		self.initUI()
 
 
 	def initUI(self):
-	
-		#self.setWindowFlags(Qt.FramelessWindowHint)
 		self.setFixedSize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.0.0')
+		self.setWindowTitle('普拉娜的笔记本 v1.1.0')
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
 		self.setAcceptDrops(True)			
 		
@@ -50,24 +55,41 @@ class MainWindow(QWidget):
 		self.btnRefresh = QPushButton('刷新记录',self)
 		self.btnNew = QPushButton('新建记录表',self)
 		self.content = QTextEdit()
+		self.btnSC = QRadioButton("简体中文（沙勒）")
+		self.btnTC = QRadioButton("繁体中文（夏萊）")
+
+		'''	
+		if self.server_la == 'SC':
+			self.btnSC.setChecked(True)
+		elif self.server_la == 'TC':
+			self.btnTC.setChecked(True)
+		'''
+
 		
 		grid = QGridLayout()
 		self.setLayout(grid)
+		
+		RBLayout = QHBoxLayout()
+		RBLayout.addWidget(self.btnSC)
+		RBLayout.addWidget(self.btnTC)
 		
 		grid.addWidget(self.btnLoad,1,1,1,1)
 		grid.addWidget(self.btnSave,2,1,1,1)
 		grid.addWidget(self.btnSearch,3,1,1,1)
 		grid.addWidget(self.btnRefresh,4,1,1,1)
 		grid.addWidget(self.btnNew,5,1,1,1)
-		grid.addWidget(self.btnAbout,7,1,1,1)
-		grid.addWidget(self.content,1,2,7,2)
+		grid.addLayout(RBLayout,7,1,1,1)
+		grid.addWidget(self.btnAbout,8,1,1,1)
+		grid.addWidget(self.content,1,2,8,2)
 		
-		self.btnLoad.setStyleSheet("background-color : rgba(0, 0, 0, 30)")
-		self.btnSave.setStyleSheet("background-color : rgba(0, 0, 0, 30)")
-		self.btnRefresh.setStyleSheet("background-color : rgba(0, 0, 0, 30)")
-		self.btnAbout.setStyleSheet("background-color : rgba(0, 0, 0, 30)")
-		self.btnNew.setStyleSheet("background-color : rgba(0, 0, 0, 30)")
-		self.content.setStyleSheet("background-color : rgba(0, 0, 0, 30)")		
+		self.btnLoad.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnSave.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnRefresh.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnAbout.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnNew.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.content.setStyleSheet("background-color : rgba(255, 255, 255, 50)")	
+		self.btnSC.setStyleSheet("QRadioButton::indicator:unchecked {border-image: url(./source/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}")
+		self.btnTC.setStyleSheet("QRadioButton::indicator:unchecked {border-image: url(./source/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}")
 		
 		self.btnLoad.clicked.connect(self.read_csv)
 		self.btnSearch.clicked.connect(self.user_search)
@@ -75,12 +97,34 @@ class MainWindow(QWidget):
 		self.btnAbout.clicked.connect(self.show_about)
 		self.btnRefresh.clicked.connect(self.refresh_table)
 		self.btnNew.clicked.connect(self.new_table)
+		self.btnSC.toggled.connect(self.SC_select)
+		self.btnTC.toggled.connect(self.TC_select)
+				
+		self.show()
 		
+	def TC_select(self, event):
+		self.cf.set('server', 'server_la', 'TC')
+		with open('./conf.ini', 'w') as configfile:
+			self.cf.write(configfile)
+		configfile.close()
 		
+		print('change to TC')	
+		app = QCoreApplication.instance()
+		app.quit()
+		subprocess.call([sys.executable] + sys.argv)
 
 		
+	def SC_select(self, event):
+		self.cf.set('server', 'server_la', 'SC')
+		with open('./conf.ini', 'w') as configfile:
+			self.cf.write(configfile)
+		configfile.close()
+		
+		print('change to SC')
+		app = QCoreApplication.instance()
+		app.quit()
+		subprocess.call([sys.executable] + sys.argv)
 	
-		self.show()
 		
 	def dragEnterEvent(self, event):
 		if event.mimeData().hasUrls:
@@ -90,8 +134,8 @@ class MainWindow(QWidget):
 					pass
 			else:
 				self.picname = event.mimeData().text()[8:]
-				self.add_newrecord(self)
 				print(event.mimeData().text())
+				self.add_newrecord(self)
 				event.accept()
 		else:
 			event.ignore()
@@ -99,10 +143,12 @@ class MainWindow(QWidget):
 
 	def add_newrecord(self, event):
 		img_path = self.picname
-		file_path = str(self.fname)		
+		file_path = str(self.fname)	
 		self.picname = ''
-		
-		self.ocr(file_path, img_path)
+		if self.server_la == 'SC':
+			self.ocr_sc(file_path, img_path)
+		elif self.server_la == 'TC':
+			self.ocr_tc(file_path, img_path)
 
 		
 	def add_btnrecord(self, event):
@@ -110,15 +156,243 @@ class MainWindow(QWidget):
 			the_dialog = NoCsvOpenDialog()
 			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
 				pass
-		else:	
-			img_name = QFileDialog.getOpenFileName(self, '选择截图', '.', '*.png')
+		else:
+			if self.last_filepath == '':
+				img_name = QFileDialog.getOpenFileName(self, '选择截图', '.', '*.png')
+			else:
+				img_name = QFileDialog.getOpenFileName(self, '选择截图', self.last_filepath, '*.png')
+				
 			img_path = img_name[0]
 			file_path = str(self.fname)
+			pathMixName = img_path.split('/')
+			new_pic_path = "/".join(pathMixName[0:len(pathMixName)-1])
+			print(new_pic_path)
+			if new_pic_path != '':
+				self.last_filepath = new_pic_path
+			self.cf.set('filepath', 'last_filepath', new_pic_path)
+			with open('./conf.ini', 'w') as configfile:
+				self.cf.write(configfile)
+			configfile.close()
 			
-			self.ocr(file_path, img_path)
+			if self.server_la == 'SC':
+				self.ocr_sc(file_path, img_path)
+			elif self.server_la == 'TC':
+				self.ocr_tc(file_path, img_path)
+		
+	def ocr_tc(self, file_path, img_path):
+		print('record: ' + file_path)
+		print('img: ' + img_path)
+		if(img_path == ''):
+			print("invaild image path!")
+		elif(file_path == ''):
+			print("invaild csv path!")
+		else:		
+			table_engine = PPStructure(show_log=False, table=True, image_orientation=False,)
+			print("ocr is running.")
+						
+			img = cv2.imread(img_path)
+			cv2.rectangle(img, (1800,790),(1000,870),(216,225,256), -1)
+			cv2.rectangle(img, (140,790),(810,870),(246,247,247), -1)
+			cv2.rectangle(img, (1480,250),(1560,300),(216,225,256), -1)
+			cv2.rectangle(img, (1480,310),(1830,380),(216,225,256), -1)
+			
+			img1 = img[870:900,1000:1800]
+			result1 = table_engine(img1)
+			
+			try:
+				res0 = str(result1[0]['res'][0]['text'])
+				new_res0 = ''.join(i for i in res0 if i.isalnum())
+			except IndexError: 
+				new_res0 = ''
+			
+			try:
+				res1 = str(result1[0]['res'][1]['text'])
+				new_res1 = ''.join(i for i in res1 if i.isalnum())
+			except IndexError: 
+				new_res1 = ''
+				
+			try:
+				res2 = str(result1[0]['res'][2]['text'])
+				new_res2 = ''.join(i for i in res2 if i.isalnum())
+			except IndexError: 
+				new_res2 = ''
+			
+			try:
+				res3 = str(result1[0]['res'][3]['text'])
+				new_res3 = ''.join(i for i in res3 if i.isalnum())
+			except IndexError: 
+				new_res3 = ''
+			
+			try:
+				res4 = str(result1[0]['res'][4]['text'])
+				new_res4 = ''.join(i for i in res4 if i.isalnum())
+			except IndexError: 
+				new_res4 = ''
+			
+			try:
+				res5 = str(result1[0]['res'][5]['text'])
+				new_res5 = ''.join(i for i in res5 if i.isalnum())
+			except IndexError: 
+				new_res5 = ''
+			
+			print(new_res0 + new_res1 + new_res2 + new_res3 + new_res4 + new_res5)
+			
+			w_res0 = self.tcocr_to_sc(new_res0)
+			w_res1 = self.tcocr_to_sc(new_res1)
+			w_res2 = self.tcocr_to_sc(new_res2)
+			w_res3 = self.tcocr_to_sc(new_res3)
+			w_res4 = self.tcocr_to_sc(new_res4)
+			w_res5 = self.tcocr_to_sc(new_res5)
+			
+			Eatk1 = ''
+			Eatk2 = ''
+			Eatk3 = ''
+			Eatk4 = ''
+			Espl1 = ''
+			Espl2 = ''
+						
+			if img[780,1265].tolist() == [253,125,0]:
+				Eatk1 = w_res0
+				Espl1 = w_res1
+				Espl2 = w_res2			
+			elif img[780,1380].tolist() == [253,125,0]:
+				Eatk1 = w_res0
+				Eatk2 = w_res1
+				Espl1 = w_res2
+				Espl2 = w_res3						
+			elif img[780,1490].tolist() == [253,125,0]:
+				Eatk1 = w_res0
+				Eatk2 = w_res1
+				Eatk3 = w_res2
+				Espl1 = w_res3
+				Espl2 = w_res4						
+			elif img[780,1600].tolist() == [253,125,0]:
+				Eatk1 = w_res0
+				Eatk2 = w_res1
+				Eatk3 = w_res2
+				Eatk4 = w_res3
+				Espl1 = w_res4
+				Espl2 = w_res5	
+			
+			img2 = img[230:390,1030:1860]
+			result2 = table_engine(img2)
+
+			try:
+				res6 = str(result2[0]['res'][0]['text'])
+				new_res6 = ''.join(i for i in res6 if i.isalnum())
+			except IndexError: 
+				new_res6 = ''
+			print(new_res6)
+			
+			try:
+				winflag = str(result2[0]['res'][1]['text'])
+				new_winflag = ''.join(i for i in winflag if i.isalnum())
+			except IndexError: 
+				new_winflag = ''
+				
+			print(new_winflag)
+			if new_winflag == 'Win':
+				battle_res = "失败"
+			else:
+				battle_res = "胜利"
+			
+			img3 = img[870:900,120:820]
+			result3 = table_engine(img3)
+			
+			try:
+				my_res0 = str(result3[0]['res'][0]['text'])
+				my_new_res0 = ''.join(i for i in my_res0 if i.isalnum())
+			except IndexError: 
+				my_new_res0 = ''
+			
+			try:
+				my_res1 = str(result3[0]['res'][1]['text'])
+				my_new_res1 = ''.join(i for i in my_res1 if i.isalnum())
+			except IndexError: 
+				my_new_res1 = ''
+				
+			try:
+				my_res2 = str(result3[0]['res'][2]['text'])
+				my_new_res2 = ''.join(i for i in my_res2 if i.isalnum())
+			except IndexError: 
+				my_new_res2 = ''
+			
+			try:
+				my_res3 = str(result3[0]['res'][3]['text'])
+				my_new_res3 = ''.join(i for i in my_res3 if i.isalnum())
+			except IndexError: 
+				my_new_res3 = ''
+			
+			try:
+				my_res4 = str(result3[0]['res'][4]['text'])
+				my_new_res4 = ''.join(i for i in my_res4 if i.isalnum())
+			except IndexError: 
+				my_new_res4 = ''
+			
+			try:
+				my_res5 = str(result3[0]['res'][5]['text'])
+				my_new_res5 = ''.join(i for i in my_res5 if i.isalnum())
+			except IndexError: 
+				my_new_res5 = ''
+			
+			print(my_new_res0 + my_new_res1 + my_new_res2 + my_new_res3 + my_new_res4 + my_new_res5)
+			
+			my_w_res0 = self.tcocr_to_sc(my_new_res0)
+			my_w_res1 = self.tcocr_to_sc(my_new_res1)
+			my_w_res2 = self.tcocr_to_sc(my_new_res2)
+			my_w_res3 = self.tcocr_to_sc(my_new_res3)
+			my_w_res4 = self.tcocr_to_sc(my_new_res4)
+			my_w_res5 = self.tcocr_to_sc(my_new_res5)
+			
+			Fatk1 = ''
+			Fatk2 = ''
+			Fatk3 = ''
+			Fatk4 = ''
+			Fspl1 = ''
+			Fspl2 = ''
+
+			if img[780,310].tolist() == [253,125,0]:
+				Fatk1 = my_w_res0
+				Fspl1 = my_w_res1
+				Fspl2 = my_w_res2			
+			elif img[780,420].tolist() == [253,125,0]:
+				Fatk1 = my_w_res0
+				Fatk2 = my_w_res1
+				Fspl1 = my_w_res2
+				Fspl2 = my_w_res3						
+			elif img[780,535].tolist() == [253,125,0]:
+				Fatk1 = my_w_res0
+				Fatk2 = my_w_res1
+				Fatk3 = my_w_res2
+				Fspl1 = my_w_res3
+				Fspl2 = my_w_res4						
+			elif img[780,650].tolist() == [253,125,0]:
+				Eatk1 = my_w_res0
+				Eatk2 = my_w_res1
+				Eatk3 = my_w_res2
+				Eatk4 = my_w_res3
+				Espl1 = my_w_res4
+				Espl2 = my_w_res5
 			
 			
-	def ocr(self, file_path, img_path):
+			pixel_value_format = img[335,120].tolist()
+			if pixel_value_format == [253,254,254]:
+				format = "防守"
+			else:
+				format = "进攻"
+			print(format)
+			
+			
+			print(battle_res)		
+						
+			battle_list = [new_res6, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format]
+			print(battle_list)
+			confirm_dialog = ConfirmDialog()
+			self.signal_setbattlelist.emit(battle_list,file_path)
+			if confirm_dialog.exec() == QDialog.Accepted:
+				pass
+			
+	def ocr_sc(self, file_path, img_path):
 		print('record: ' + file_path)
 		print('img: ' + img_path)
 		if(img_path == ''):
@@ -173,6 +447,43 @@ class MainWindow(QWidget):
 			except IndexError: 
 				new_res5 = ''
 			
+			w_res0 = self.scocr_to_sc(new_res0)
+			w_res1 = self.scocr_to_sc(new_res1)
+			w_res2 = self.scocr_to_sc(new_res2)
+			w_res3 = self.scocr_to_sc(new_res3)
+			w_res4 = self.scocr_to_sc(new_res4)
+			w_res5 = self.scocr_to_sc(new_res5)
+			
+			Eatk1 = ''
+			Eatk2 = ''
+			Eatk3 = ''
+			Eatk4 = ''
+			Espl1 = ''
+			Espl2 = ''
+						
+			if img[780,1265].tolist() == [253,125,0]:
+				Eatk1 = w_res0
+				Espl1 = w_res1
+				Espl2 = w_res2			
+			elif img[780,1380].tolist() == [253,125,0]:
+				Eatk1 = w_res0
+				Eatk2 = w_res1
+				Espl1 = w_res2
+				Espl2 = w_res3						
+			elif img[780,1490].tolist() == [253,125,0]:
+				Eatk1 = w_res0
+				Eatk2 = w_res1
+				Eatk3 = w_res2
+				Espl1 = w_res3
+				Espl2 = w_res4						
+			elif img[780,1600].tolist() == [253,125,0]:
+				Eatk1 = w_res0
+				Eatk2 = w_res1
+				Eatk3 = w_res2
+				Eatk4 = w_res3
+				Espl1 = w_res4
+				Espl2 = w_res5		
+			
 			print(new_res0 + new_res1 + new_res2 + new_res3 + new_res4 + new_res5)
 			
 			img2 = img[250:370,1290:1860]
@@ -184,13 +495,6 @@ class MainWindow(QWidget):
 			except IndexError: 
 				new_res6 = ''
 			print(new_res6)
-
-			w_res0 = self.scocr_to_sc(new_res0)
-			w_res1 = self.scocr_to_sc(new_res1)
-			w_res2 = self.scocr_to_sc(new_res2)
-			w_res3 = self.scocr_to_sc(new_res3)
-			w_res4 = self.scocr_to_sc(new_res4)
-			w_res5 = self.scocr_to_sc(new_res5)
 			
 			
 			img3 = img[870:900,120:820]
@@ -241,14 +545,51 @@ class MainWindow(QWidget):
 			my_w_res4 = self.scocr_to_sc(my_new_res4)
 			my_w_res5 = self.scocr_to_sc(my_new_res5)
 			
+			Fatk1 = ''
+			Fatk2 = ''
+			Fatk3 = ''
+			Fatk4 = ''
+			Fspl1 = ''
+			Fspl2 = ''
+
+			if img[780,310].tolist() == [253,125,0]:
+				Fatk1 = my_w_res0
+				Fspl1 = my_w_res1
+				Fspl2 = my_w_res2			
+			elif img[780,420].tolist() == [253,125,0]:
+				Fatk1 = my_w_res0
+				Fatk2 = my_w_res1
+				Fspl1 = my_w_res2
+				Fspl2 = my_w_res3						
+			elif img[780,535].tolist() == [253,125,0]:
+				Fatk1 = my_w_res0
+				Fatk2 = my_w_res1
+				Fatk3 = my_w_res2
+				Fspl1 = my_w_res3
+				Fspl2 = my_w_res4						
+			elif img[780,650].tolist() == [253,125,0]:
+				Eatk1 = my_w_res0
+				Eatk2 = my_w_res1
+				Eatk3 = my_w_res2
+				Eatk4 = my_w_res3
+				Espl1 = my_w_res4
+				Espl2 = my_w_res5
+			
 			pixel_value = img[300,230].tolist()
 			if pixel_value == [227,229,234]:
 				battle_res = "失败"
 			else:
 				battle_res = "胜利"
-			print(battle_res)		
+			print(battle_res)	
+
+			pixel_value_format = img[325,100].tolist()
+			if pixel_value_format == [139,107,69]:
+				format = "进攻"
+			else:
+				format = "防守"
+			print(format)
 						
-			battle_list = [new_res6, w_res0, w_res1, w_res2, w_res3, w_res4, w_res5, my_w_res0, my_w_res1, my_w_res2, my_w_res3, my_w_res4, my_w_res5, battle_res]
+			battle_list = [new_res6, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format]
 			
 			confirm_dialog = ConfirmDialog()
 			self.signal_setbattlelist.emit(battle_list,file_path)
@@ -260,6 +601,9 @@ class MainWindow(QWidget):
 		for num in range(0,df_length):
 			template_string_data = '''
 			<table border="1" align="right" style="background-color: rgba(255, 255, 255, 0.5);" >
+				<tr>
+					<th colspan="9">{{ UserId }}</th>
+				</tr>
 				<tr>
 					<th>{{ FAttacker1 }}</th>
 					<th>{{ FAttacker2 }}</th>
@@ -277,7 +621,7 @@ class MainWindow(QWidget):
 					<th>{{ FSpecial1 }}</th>
 					<th>{{ FSpecial2 }}</th>
 					<th>{{ Formation }}</th>
-					<th>{{ UserId }}</th>
+					<th>{{ space }}</th>
 					<th>{{ space }}</th>
 					<th>{{ ESpecial1 }}</th>
 					<th>{{ ESpecial2 }}</th>
@@ -315,6 +659,7 @@ class MainWindow(QWidget):
 			pass
 		else:
 			self.fname = fname_r
+
 			print(self.fname)
 			df = pd.read_csv(self.fname)	
 			self.content.clear()
@@ -359,7 +704,10 @@ class MainWindow(QWidget):
 
 	def paintEvent(self, event):		
 		painter = QPainter(self)
-		pixmap = QPixmap("./data/images/bg.jpg")
+		if self.server_la == 'SC':
+			pixmap = QPixmap("./data/images/bg.png")
+		elif self.server_la == 'TC':
+			pixmap = QPixmap("./data/images/bg_tc.png")
 		painter.drawPixmap(self.rect(), pixmap)
 		
 	def get_id(self,userid):
@@ -385,9 +733,17 @@ class MainWindow(QWidget):
 			stud_name = ''
 		return stud_name
 		
+	def tcocr_to_sc(self,stud):
+		stud_dict = pd.read_json('./data/studstr_tcocr2sc.json', typ='series')
+		try:
+			stud_name = stud_dict[stud]
+		except KeyError:
+			stud_name = ''
+		return stud_name
+		
 
 	
-		
+#todo: formation confirm
 class ConfirmDialog(QDialog):
 	def __init__(self):
 		super().__init__()
@@ -453,6 +809,7 @@ class ConfirmDialog(QDialog):
 		
 		self.ComboBox_res.setEditable(True)
 		self.ComboBox_res.addItems(["胜利", "失败"])
+		self.ComboBox_res.setStyleSheet("QComboBox::down-arrow {image: url(./source/downarrow.svg);}")
 	
 		grid = QGridLayout()
 		self.setLayout(grid)
@@ -545,11 +902,15 @@ class ConfirmDialog(QDialog):
 		self.lineEdit_f5.setText(battle_list[11])
 		self.lineEdit_f6.setText(battle_list[12])
 		self.ComboBox_res.setCurrentText(battle_list[13])
+		self.format = str(battle_list[14])
 		self.file_path = file_name
 		
 	def sc_to_code(self,stud):
-		stud_dict = pd.read_json('./data/studstr_sc2code.json', typ='series')
-		return stud_dict[stud]
+		if stud != '':
+			stud_dict = pd.read_json('./data/studstr_sc2code.json', typ='series')
+			return stud_dict[stud]
+		else:
+			return '1NoData'
 		
 	def scocr_to_sc(self,stud):
 		stud_dict = pd.read_json('./data/studstr_scocr2sc.json', typ='series')
@@ -576,12 +937,11 @@ class ConfirmDialog(QDialog):
 		Eatk4 = self.sc_to_code(self.lineEdit_e4.text())
 		Espl1 = self.sc_to_code(self.lineEdit_e5.text())
 		Espl2 = self.sc_to_code(self.lineEdit_e6.text())
-		
-		#print(userId,str(datetime.date.today()),atk1,atk2,atk3,atk4,spl1,spl2)
+		formation = self.format
 		
 		with open(self.file_path, "a", encoding="utf-8", newline="") as f:
 			wf = csv.writer(f)
-			new_data = [userId,str(datetime.date.today()),Fatk1,Fatk2,Fatk3,Fatk4,Fspl1,Fspl2,'进攻',Eatk1,Eatk2,Eatk3,Eatk4,Espl1,Espl2,result]
+			new_data = [userId,str(datetime.date.today()),Fatk1,Fatk2,Fatk3,Fatk4,Fspl1,Fspl2,formation,Eatk1,Eatk2,Eatk3,Eatk4,Espl1,Espl2,result]
 			wf.writerow(new_data)
 			f.close()
 	
@@ -612,10 +972,7 @@ class SearchDialog(QDialog):
 		self.btnOk = QPushButton('查询',self)
 		
 		self.btnOk.clicked.connect(self.set_userid)
-		self.btnOk.clicked.connect(self.close)
-		
-
-		
+		self.btnOk.clicked.connect(self.close)	
 		
 		vbox = QVBoxLayout()
 		vbox.addWidget(self.label)
@@ -629,6 +986,7 @@ class SearchDialog(QDialog):
 		df = pd.read_csv(file_path)
 		user_list = list(df['UserId'])
 		completer = QCompleter(user_list)
+		completer.setFilterMode(Qt.MatchContains)
 		self.lineEdit.setCompleter(completer)
 		
 	def paintEvent(self, event):		
@@ -641,7 +999,6 @@ class SearchDialog(QDialog):
 		self.signal_setid.emit(userid)
 		
 class NewCsvDialog(QDialog):
-	
 	def __init__(self):
 		super().__init__()
 		self.initUI()
@@ -734,11 +1091,13 @@ class AboutDialog(QDialog):
 		self.label3 = QLabel()
 		self.label3.setText('<a href="https://space.bilibili.com/347996989">B站ID：Hamism</a>')
 		self.label3.setAlignment(Qt.AlignLeft)
+		self.label3.setOpenExternalLinks(True)
 		self.label3.setStyleSheet("font-weight:bold;font-size:20px;color:black")
 		
 		self.label4 = QLabel()
 		self.label4.setText('<a href="https://github.com/zolara/bluearchive_TcbHistoryTool">Github：bluearchive_TcbHistoryTool</a>')
 		self.label4.setAlignment(Qt.AlignLeft)
+		self.label4.setOpenExternalLinks(True)
 		self.label4.setStyleSheet("font-weight:bold;font-size:20px;color:black")
 		
 		self.label5 = QLabel()
@@ -766,8 +1125,7 @@ class AboutDialog(QDialog):
 		grid.addWidget(self.label4,4,3,1,1)
 		grid.addWidget(self.label5,3,2,1,1)
 		grid.addWidget(self.label6,4,2,1,1)	
-		grid.addWidget(self.btnOk,5,3,1,1)
-		
+		grid.addWidget(self.btnOk,5,3,1,1)		
 
 		self.setWindowOpacity(0.8)
 		self.show()
@@ -781,6 +1139,6 @@ class AboutDialog(QDialog):
 if __name__ == "__main__":
 	app = QApplication(sys.argv)
 	apply_stylesheet(app, theme= url+'/qt_material/themes/light_cyan_501.xml') 
-	app.setWindowIcon(QIcon(url+"/data/images/icon1.ico"))
+	app.setWindowIcon(QIcon(url+"/data/images/icon.ico"))
 	window = MainWindow()
 	sys.exit(app.exec())

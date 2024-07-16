@@ -845,7 +845,7 @@ QScrollBar:vertical {
 }
 
 QScrollBar::handle {
-  background: {{primaryColor|opacity(0.1)}};
+  background: {{primaryColor|opacity(0.5)}};
 }
 
 QScrollBar::handle:horizontal {
