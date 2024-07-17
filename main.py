@@ -58,29 +58,32 @@ class MainWindow(QWidget):
 		self.btnSC = QRadioButton("简体中文（沙勒）")
 		self.btnTC = QRadioButton("繁体中文（夏萊）")
 
-		'''	
 		if self.server_la == 'SC':
 			self.btnSC.setChecked(True)
 		elif self.server_la == 'TC':
 			self.btnTC.setChecked(True)
-		'''
-
 		
 		grid = QGridLayout()
 		self.setLayout(grid)
+		
+		TopLayout = QHBoxLayout()
+		TopLayout.addStretch(1)
+		TopLayout.addWidget(self.btnRefresh)
+		
 		
 		RBLayout = QHBoxLayout()
 		RBLayout.addWidget(self.btnSC)
 		RBLayout.addWidget(self.btnTC)
 		
+		grid.addWidget(self.content,2,2,6,2)
+		grid.addLayout(TopLayout,1,2,1,2)
 		grid.addWidget(self.btnLoad,1,1,1,1)
 		grid.addWidget(self.btnSave,2,1,1,1)
-		grid.addWidget(self.btnSearch,3,1,1,1)
-		grid.addWidget(self.btnRefresh,4,1,1,1)
-		grid.addWidget(self.btnNew,5,1,1,1)
-		grid.addLayout(RBLayout,7,1,1,1)
-		grid.addWidget(self.btnAbout,8,1,1,1)
-		grid.addWidget(self.content,1,2,8,2)
+		grid.addWidget(self.btnSearch,3,1,1,1)		
+		grid.addWidget(self.btnNew,4,1,1,1)
+		grid.addLayout(RBLayout,6,1,1,1)
+		grid.addWidget(self.btnAbout,7,1,1,1)
+		
 		
 		self.btnLoad.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnSave.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
@@ -88,8 +91,8 @@ class MainWindow(QWidget):
 		self.btnAbout.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnNew.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.content.setStyleSheet("background-color : rgba(255, 255, 255, 50)")	
-		self.btnSC.setStyleSheet("QRadioButton::indicator:unchecked {border-image: url(./source/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}")
-		self.btnTC.setStyleSheet("QRadioButton::indicator:unchecked {border-image: url(./source/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}")
+		self.btnSC.setIcon(QIcon("QRadioButton::indicator:unchecked {border-image: url(./data/icon/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}"))
+		self.btnTC.setIcon(QIcon("QRadioButton::indicator:unchecked {border-image: url(./data/icon/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}"))
 		
 		self.btnLoad.clicked.connect(self.read_csv)
 		self.btnSearch.clicked.connect(self.user_search)
@@ -103,27 +106,29 @@ class MainWindow(QWidget):
 		self.show()
 		
 	def TC_select(self, event):
-		self.cf.set('server', 'server_la', 'TC')
-		with open('./conf.ini', 'w') as configfile:
-			self.cf.write(configfile)
-		configfile.close()
+		if self.server_la != 'TC':
+			self.cf.set('server', 'server_la', 'TC')
+			with open('./conf.ini', 'w') as configfile:
+				self.cf.write(configfile)
+			configfile.close()
 		
-		print('change to TC')	
-		app = QCoreApplication.instance()
-		app.quit()
-		subprocess.call([sys.executable] + sys.argv)
+			print('change to TC')	
+			app = QCoreApplication.instance()
+			app.quit()
+			subprocess.call([sys.executable] + sys.argv)
 
 		
 	def SC_select(self, event):
-		self.cf.set('server', 'server_la', 'SC')
-		with open('./conf.ini', 'w') as configfile:
-			self.cf.write(configfile)
-		configfile.close()
+		if self.server_la != 'SC':
+			self.cf.set('server', 'server_la', 'SC')
+			with open('./conf.ini', 'w') as configfile:
+				self.cf.write(configfile)
+			configfile.close()
 		
-		print('change to SC')
-		app = QCoreApplication.instance()
-		app.quit()
-		subprocess.call([sys.executable] + sys.argv)
+			print('change to SC')
+			app = QCoreApplication.instance()
+			app.quit()
+			subprocess.call([sys.executable] + sys.argv)
 	
 		
 	def dragEnterEvent(self, event):
@@ -272,7 +277,14 @@ class MainWindow(QWidget):
 				Eatk3 = w_res2
 				Eatk4 = w_res3
 				Espl1 = w_res4
-				Espl2 = w_res5	
+				Espl2 = w_res5
+			else:
+				Eatk1 = w_res0
+				Eatk2 = w_res1
+				Eatk3 = w_res2
+				Eatk4 = w_res3
+				Espl1 = w_res4
+				Espl2 = w_res5				
 			
 			img2 = img[230:390,1030:1860]
 			result2 = table_engine(img2)
@@ -367,12 +379,19 @@ class MainWindow(QWidget):
 				Fspl1 = my_w_res3
 				Fspl2 = my_w_res4						
 			elif img[780,650].tolist() == [253,125,0]:
-				Eatk1 = my_w_res0
-				Eatk2 = my_w_res1
-				Eatk3 = my_w_res2
-				Eatk4 = my_w_res3
-				Espl1 = my_w_res4
-				Espl2 = my_w_res5
+				Fatk1 = my_w_res0
+				Fatk2 = my_w_res1
+				Fatk3 = my_w_res2
+				Fatk4 = my_w_res3
+				Fspl1 = my_w_res4
+				Fspl2 = my_w_res5
+			else:
+				Fatk1 = my_w_res0
+				Fatk2 = my_w_res1
+				Fatk3 = my_w_res2
+				Fatk4 = my_w_res3
+				Fspl1 = my_w_res4
+				Fspl2 = my_w_res5	
 			
 			
 			pixel_value_format = img[335,120].tolist()
@@ -482,7 +501,14 @@ class MainWindow(QWidget):
 				Eatk3 = w_res2
 				Eatk4 = w_res3
 				Espl1 = w_res4
-				Espl2 = w_res5		
+				Espl2 = w_res5
+			else:
+				Eatk1 = w_res0
+				Eatk2 = w_res1
+				Eatk3 = w_res2
+				Eatk4 = w_res3
+				Espl1 = w_res4
+				Espl2 = w_res5				
 			
 			print(new_res0 + new_res1 + new_res2 + new_res3 + new_res4 + new_res5)
 			
@@ -568,12 +594,19 @@ class MainWindow(QWidget):
 				Fspl1 = my_w_res3
 				Fspl2 = my_w_res4						
 			elif img[780,650].tolist() == [253,125,0]:
-				Eatk1 = my_w_res0
-				Eatk2 = my_w_res1
-				Eatk3 = my_w_res2
-				Eatk4 = my_w_res3
-				Espl1 = my_w_res4
-				Espl2 = my_w_res5
+				Fatk1 = my_w_res0
+				Fatk2 = my_w_res1
+				Fatk3 = my_w_res2
+				Fatk4 = my_w_res3
+				Fspl1 = my_w_res4
+				Fspl2 = my_w_res5
+			else:
+				Fatk1 = my_w_res0
+				Fatk2 = my_w_res1
+				Fatk3 = my_w_res2
+				Fatk4 = my_w_res3
+				Fspl1 = my_w_res4
+				Fspl2 = my_w_res5
 			
 			pixel_value = img[300,230].tolist()
 			if pixel_value == [227,229,234]:
@@ -809,7 +842,7 @@ class ConfirmDialog(QDialog):
 		
 		self.ComboBox_res.setEditable(True)
 		self.ComboBox_res.addItems(["胜利", "失败"])
-		self.ComboBox_res.setStyleSheet("QComboBox::down-arrow {image: url(./source/downarrow.svg);}")
+		self.ComboBox_res.setStyleSheet("QComboBox::down-arrow {image: url(./data/icon/down_arrow.svg);}")
 	
 		grid = QGridLayout()
 		self.setLayout(grid)
@@ -848,8 +881,7 @@ class ConfirmDialog(QDialog):
 		grid.addWidget(self.ComboBox_res,10,4,1,1)
 		
 		grid.addWidget(self.btnOk,11,4,1,1)
-		
-		
+
 		self.label_f1.setAlignment(Qt.AlignCenter)
 		self.label_f2.setAlignment(Qt.AlignCenter)
 		self.label_f3.setAlignment(Qt.AlignCenter)
@@ -984,7 +1016,7 @@ class SearchDialog(QDialog):
 		
 	def get_file_name(self, file_path):
 		df = pd.read_csv(file_path)
-		user_list = list(df['UserId'])
+		user_list = list(set(df['UserId']))
 		completer = QCompleter(user_list)
 		completer.setFilterMode(Qt.MatchContains)
 		self.lineEdit.setCompleter(completer)
@@ -1140,5 +1172,6 @@ if __name__ == "__main__":
 	app = QApplication(sys.argv)
 	apply_stylesheet(app, theme= url+'/qt_material/themes/light_cyan_501.xml') 
 	app.setWindowIcon(QIcon(url+"/data/images/icon.ico"))
+	app.setAttribute(Qt.AA_UseHighDpiPixmaps)
 	window = MainWindow()
 	sys.exit(app.exec())
