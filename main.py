@@ -44,7 +44,7 @@ class MainWindow(QWidget):
 
 	def initUI(self):
 		self.setFixedSize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.1.0')
+		self.setWindowTitle('普拉娜的笔记本 v1.2.2')
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
 		self.setAcceptDrops(True)			
 		
@@ -55,6 +55,7 @@ class MainWindow(QWidget):
 		self.btnRefresh = QPushButton('刷新记录',self)
 		self.btnNew = QPushButton('新建记录表',self)
 		self.content = QTextEdit()
+		self.btnHelp = QPushButton('使用帮助',self)
 		self.btnSC = QRadioButton("简体中文（沙勒）")
 		self.btnTC = QRadioButton("繁体中文（夏萊）")
 
@@ -75,14 +76,15 @@ class MainWindow(QWidget):
 		RBLayout.addWidget(self.btnSC)
 		RBLayout.addWidget(self.btnTC)
 		
-		grid.addWidget(self.content,2,2,6,2)
-		grid.addLayout(TopLayout,1,2,1,2)
-		grid.addWidget(self.btnLoad,1,1,1,1)
-		grid.addWidget(self.btnSave,2,1,1,1)
-		grid.addWidget(self.btnSearch,3,1,1,1)		
+		grid.addWidget(self.content,1,2,7,2)
+		grid.addLayout(TopLayout,8,2,1,2)
+		grid.addWidget(self.btnLoad,2,1,1,1)
+		grid.addWidget(self.btnSave,3,1,1,1)
+		grid.addWidget(self.btnSearch,1,1,1,1)		
 		grid.addWidget(self.btnNew,4,1,1,1)
 		grid.addLayout(RBLayout,6,1,1,1)
-		grid.addWidget(self.btnAbout,7,1,1,1)
+		grid.addWidget(self.btnHelp,7,1,1,1)
+		grid.addWidget(self.btnAbout,8,1,1,1)
 		
 		
 		self.btnLoad.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
@@ -90,6 +92,7 @@ class MainWindow(QWidget):
 		self.btnRefresh.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnAbout.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnNew.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnHelp.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.content.setStyleSheet("background-color : rgba(255, 255, 255, 50)")	
 		self.btnSC.setIcon(QIcon("QRadioButton::indicator:unchecked {border-image: url(./data/icon/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}"))
 		self.btnTC.setIcon(QIcon("QRadioButton::indicator:unchecked {border-image: url(./data/icon/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}"))
@@ -102,7 +105,8 @@ class MainWindow(QWidget):
 		self.btnNew.clicked.connect(self.new_table)
 		self.btnSC.toggled.connect(self.SC_select)
 		self.btnTC.toggled.connect(self.TC_select)
-				
+		self.btnHelp.clicked.connect(self.show_help)
+		
 		self.show()
 		
 	def TC_select(self, event):
@@ -144,6 +148,11 @@ class MainWindow(QWidget):
 				event.accept()
 		else:
 			event.ignore()
+			
+	def show_help(self, event):
+		the_help_dialog = HelpDialog()
+		if the_help_dialog.exec() == QDialog.Accepted:
+			pass
 
 
 	def add_newrecord(self, event):
@@ -397,6 +406,8 @@ class MainWindow(QWidget):
 			pixel_value_format = img[335,120].tolist()
 			if pixel_value_format == [253,254,254]:
 				format = "防守"
+			elif pixel_value_format[0]>250 & pixel_value_format[0]<260 & pixel_value_format[1]>250 & pixel_value_format[1]<260 & pixel_value_format[2]>250 & pixel_value_format[2]<260:
+				format = "防守"
 			else:
 				format = "进攻"
 			print(format)
@@ -611,12 +622,16 @@ class MainWindow(QWidget):
 			pixel_value = img[300,230].tolist()
 			if pixel_value == [227,229,234]:
 				battle_res = "失败"
+			elif pixel_value[0]>220 & pixel_value[0]<235 & pixel_value[1]>225 & pixel_value[1]<235 & pixel_value[2]>230 & pixel_value[2]<240:
+				battle_res = "失败"
 			else:
 				battle_res = "胜利"
 			print(battle_res)	
 
 			pixel_value_format = img[325,100].tolist()
 			if pixel_value_format == [139,107,69]:
+				format = "进攻"
+			elif pixel_value_format[0]>135 & pixel_value_format[0]<145 & pixel_value_format[1]>100 & pixel_value_format[1]<115 & pixel_value_format[2]>65 & pixel_value_format[2]<75:
 				format = "进攻"
 			else:
 				format = "防守"
@@ -686,7 +701,7 @@ class MainWindow(QWidget):
 			self.content.append('\n\n')
 			
 	def read_csv(self, event):
-		fname_r, fpath= QFileDialog.getOpenFileName(self, '选择csv记录', '.', '*.csv')
+		fname_r, fpath= QFileDialog.getOpenFileName(self, '选择csv记录', './table', '*.csv')
 		if fname_r == '' :
 			print(self.fname)
 			pass
@@ -774,9 +789,34 @@ class MainWindow(QWidget):
 			stud_name = ''
 		return stud_name
 		
+class HelpDialog(QDialog):
+		def __init__(self):
+			super().__init__()
+			self.initUI()
 
-	
-#todo: formation confirm
+		def initUI(self):
+			self.setWindowTitle('使用帮助')
+			self.setFixedSize(600, 300) 
+			self.content = QTextEdit()
+			self.content.verticalScrollBar().setValue(self.content.verticalScrollBar().maximum())
+
+			self.buttonclose = QPushButton('OK',self)
+			self.buttonclose.clicked.connect(self.close)
+
+			grid = QGridLayout()
+			grid.addWidget(self.content,1,1,1,2)
+			grid.addWidget(self.buttonclose,2,2,1,1)
+			self.setLayout(grid)
+		
+			txtfile = QFile("./data/help.txt")
+			if not txtfile.open(QFile.ReadOnly | QFile.Text):
+				return -1
+			stream = QTextStream(txtfile)
+			text = stream.readAll()
+			self.content.setHtml("<font size='5' ><b>" + text + "</b></font>")
+			self.setWindowFlags(Qt.FramelessWindowHint)
+			self.setWindowOpacity(0.8)
+
 class ConfirmDialog(QDialog):
 	def __init__(self):
 		super().__init__()
@@ -786,7 +826,7 @@ class ConfirmDialog(QDialog):
 		
 		
 	def initUI(self):
-		self.setFixedSize(600, 450)  
+		self.setFixedSize(600, 540)  
 		self.setWindowTitle('确认数据')
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
 		self.setWindowFlags(Qt.WindowStaysOnTopHint)
@@ -811,6 +851,7 @@ class ConfirmDialog(QDialog):
 		self.label_e6 = QLabel('敌方支援②', self)
 		self.label_user = QLabel('对手ID', self)	
 		self.label_res = QLabel('对战结果', self)
+		self.label_format = QLabel('编队模式', self)
 		
 		self.lineEdit_f1 = QLineEdit()
 		self.lineEdit_f2 = QLineEdit()
@@ -826,6 +867,7 @@ class ConfirmDialog(QDialog):
 		self.lineEdit_e6 = QLineEdit()
 		self.lineEdit_user = QLineEdit()
 		self.ComboBox_res = QComboBox()
+		self.ComboBox_format = QComboBox()
 		
 		self.lineEdit_f1.setCompleter(completer)
 		self.lineEdit_f2.setCompleter(completer)
@@ -843,6 +885,9 @@ class ConfirmDialog(QDialog):
 		self.ComboBox_res.setEditable(True)
 		self.ComboBox_res.addItems(["胜利", "失败"])
 		self.ComboBox_res.setStyleSheet("QComboBox::down-arrow {image: url(./data/icon/down_arrow.svg);}")
+		self.ComboBox_format.setEditable(True)
+		self.ComboBox_format.addItems(["进攻", "防守"])
+		self.ComboBox_format.setStyleSheet("QComboBox::down-arrow {image: url(./data/icon/down_arrow.svg);}")
 	
 		grid = QGridLayout()
 		self.setLayout(grid)
@@ -880,7 +925,10 @@ class ConfirmDialog(QDialog):
 		grid.addWidget(self.lineEdit_user,10,3,1,1)
 		grid.addWidget(self.ComboBox_res,10,4,1,1)
 		
-		grid.addWidget(self.btnOk,11,4,1,1)
+		grid.addWidget(self.label_format,11,4,1,1)
+		grid.addWidget(self.ComboBox_format,12,4,1,1)
+		
+		grid.addWidget(self.btnOk,13,4,1,1)
 
 		self.label_f1.setAlignment(Qt.AlignCenter)
 		self.label_f2.setAlignment(Qt.AlignCenter)
@@ -896,6 +944,7 @@ class ConfirmDialog(QDialog):
 		self.label_e6.setAlignment(Qt.AlignCenter)
 		self.label_user.setAlignment(Qt.AlignCenter)
 		self.label_res.setAlignment(Qt.AlignCenter)
+		self.label_format.setAlignment(Qt.AlignCenter)
 		
 		self.label_f1.setStyleSheet("font-weight:bold;font-size:16px")
 		self.label_f2.setStyleSheet("font-weight:bold;font-size:16px")
@@ -911,6 +960,7 @@ class ConfirmDialog(QDialog):
 		self.label_e6.setStyleSheet("font-weight:bold;font-size:16px")
 		self.label_user.setStyleSheet("font-weight:bold;font-size:16px")
 		self.label_res.setStyleSheet("font-weight:bold;font-size:16px")
+		self.label_format.setStyleSheet("font-weight:bold;font-size:16px")
 				
 		self.btnOk.setStyleSheet("background-color : rgba(176,196,222,1)")
 		
@@ -934,7 +984,7 @@ class ConfirmDialog(QDialog):
 		self.lineEdit_f5.setText(battle_list[11])
 		self.lineEdit_f6.setText(battle_list[12])
 		self.ComboBox_res.setCurrentText(battle_list[13])
-		self.format = str(battle_list[14])
+		self.ComboBox_format.setCurrentText(battle_list[14])
 		self.file_path = file_name
 		
 	def sc_to_code(self,stud):
@@ -969,7 +1019,7 @@ class ConfirmDialog(QDialog):
 		Eatk4 = self.sc_to_code(self.lineEdit_e4.text())
 		Espl1 = self.sc_to_code(self.lineEdit_e5.text())
 		Espl2 = self.sc_to_code(self.lineEdit_e6.text())
-		formation = self.format
+		formation = self.ComboBox_format.currentText()
 		
 		with open(self.file_path, "a", encoding="utf-8", newline="") as f:
 			wf = csv.writer(f)
@@ -982,7 +1032,7 @@ class ConfirmDialog(QDialog):
 		painter = QPainter(self)
 		pixmap = QPixmap("./data/images/confirm.png")
 		painter.drawPixmap(self.rect(), pixmap)
-	
+
 		
 			
 class SearchDialog(QDialog):
