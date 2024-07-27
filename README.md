@@ -1,6 +1,9 @@
 <h2>请给作者点一个star，这是作者持续更新的动力。</h2>
-目前源码已支持国际服，打包后的可执行文件完成最终修改后会上传至github，目前测试版本的可执行文件可在群内下载<br>
+目前已支持国际服。<br>
 QQ群 945558059 群头像为小瞬。
+
+<h2>新学生数据包更新方法</h2>
+将压缩包解压，并将其中data文件夹替换原本 ./data 与 ./_internal/data文件。<br />可能后期会推出一键安装的bash脚本。
 
 <h2>通过可执行文件直接运行</h2>
 请在右侧下载release版本，无需下载源码，无需考虑环境。
@@ -18,7 +21,7 @@ OCR模块安装教程<https://github.com/PaddlePaddle/PaddleOCR/blob/main/ppstru
 <h2>通过pyinstaller编译源码打包运行</h2>
 
 ```javascript
-pyinstaller.exe -i icon1.ico -D .\main.py --collect-all paddleocr --collect-all pyclipper --collect-all imghdr --collect-all skimage --collect-all imgaug --collect-all scipy.io --collect-all lmdb -p python_path\Lib\site-packages\scipy\_lib\array_api_compat\numpy\fft
+pyinstaller.exe -i icon1.ico -D .\main.py --collect-all paddleocr --collect-all pyclipper --collect-all imghdr --collect-all skimage --collect-all imgaug --collect-all scipy.io --collect-all lmdb -p python_path\Lib\site-packages\scipy\_lib\array_api_compat\numpy\fft --hidden-import PySide6.QtSvg
 ```
 报错解决方法
 1. 编译中报错UserWarning: The numpy.array_api submodule is still experimental. See NEP 47.<br />解决方式：python_path\Lib\site-packages\Pyinstaller\building\build_main.py打开167行：
