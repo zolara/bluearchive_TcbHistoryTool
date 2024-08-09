@@ -44,7 +44,7 @@ class MainWindow(QWidget):
 
 	def initUI(self):
 		self.setFixedSize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.2.2')
+		self.setWindowTitle('普拉娜的笔记本 v1.2.3')
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
 		self.setAcceptDrops(True)			
 		
@@ -264,23 +264,28 @@ class MainWindow(QWidget):
 			Eatk4 = ''
 			Espl1 = ''
 			Espl2 = ''
+			
+			Ecolor2 = img[780,1265].tolist()
+			Ecolor3 = img[780,1380].tolist()
+			Ecolor4 = img[780,1490].tolist()
+			Ecolor5 = img[780,1600].tolist()
 						
-			if img[780,1265].tolist() == [253,125,0]:
+			if Ecolor2[2]<100:
 				Eatk1 = w_res0
 				Espl1 = w_res1
 				Espl2 = w_res2			
-			elif img[780,1380].tolist() == [253,125,0]:
+			elif Ecolor3[2]<100:
 				Eatk1 = w_res0
 				Eatk2 = w_res1
 				Espl1 = w_res2
 				Espl2 = w_res3						
-			elif img[780,1490].tolist() == [253,125,0]:
+			elif Ecolor4[2]<100:
 				Eatk1 = w_res0
 				Eatk2 = w_res1
 				Eatk3 = w_res2
 				Espl1 = w_res3
 				Espl2 = w_res4						
-			elif img[780,1600].tolist() == [253,125,0]:
+			elif Ecolor5[2]<100:
 				Eatk1 = w_res0
 				Eatk2 = w_res1
 				Eatk3 = w_res2
@@ -371,23 +376,28 @@ class MainWindow(QWidget):
 			Fatk4 = ''
 			Fspl1 = ''
 			Fspl2 = ''
+			
+			Fcolor2 = img[780,310].tolist()
+			Fcolor3 = img[780,420].tolist()
+			Fcolor4 = img[780,535].tolist()
+			Fcolor5 = img[780,650].tolist()
 
-			if img[780,310].tolist() == [253,125,0]:
+			if Fcolor2[2]<100:
 				Fatk1 = my_w_res0
 				Fspl1 = my_w_res1
 				Fspl2 = my_w_res2			
-			elif img[780,420].tolist() == [253,125,0]:
+			elif Fcolor3[2]<100:
 				Fatk1 = my_w_res0
 				Fatk2 = my_w_res1
 				Fspl1 = my_w_res2
 				Fspl2 = my_w_res3						
-			elif img[780,535].tolist() == [253,125,0]:
+			elif Fcolor4[2]<100:
 				Fatk1 = my_w_res0
 				Fatk2 = my_w_res1
 				Fatk3 = my_w_res2
 				Fspl1 = my_w_res3
 				Fspl2 = my_w_res4						
-			elif img[780,650].tolist() == [253,125,0]:
+			elif Fcolor5[2]<100:
 				Fatk1 = my_w_res0
 				Fatk2 = my_w_res1
 				Fatk3 = my_w_res2
@@ -403,13 +413,14 @@ class MainWindow(QWidget):
 				Fspl2 = my_w_res5	
 			
 			
-			pixel_value_format = img[335,120].tolist()
-			if pixel_value_format == [253,254,254]:
-				format = "防守"
-			elif pixel_value_format[0]>250 & pixel_value_format[0]<260 & pixel_value_format[1]>250 & pixel_value_format[1]<260 & pixel_value_format[2]>250 & pixel_value_format[2]<260:
-				format = "防守"
-			else:
+			pixel_value_format = img[340,100].tolist()
+			print(pixel_value_format)
+			if pixel_value_format == [131,98,61]:
 				format = "进攻"
+			elif pixel_value_format[0]>120 and pixel_value_format[0]<140 and pixel_value_format[1]>90 and pixel_value_format[1]<110 and pixel_value_format[2]>50 and pixel_value_format[2]<70:
+				format = "进攻"
+			else:
+				format = "防守"
 			print(format)
 			
 			
@@ -490,23 +501,28 @@ class MainWindow(QWidget):
 			Eatk4 = ''
 			Espl1 = ''
 			Espl2 = ''
+			
+			Ecolor2 = img[780,1265].tolist()
+			Ecolor3 = img[780,1380].tolist()
+			Ecolor4 = img[780,1490].tolist()
+			Ecolor5 = img[780,1600].tolist()
 						
-			if img[780,1265].tolist() == [253,125,0]:
+			if Ecolor2[2]<100:
 				Eatk1 = w_res0
 				Espl1 = w_res1
 				Espl2 = w_res2			
-			elif img[780,1380].tolist() == [253,125,0]:
+			elif Ecolor2[2]<100:
 				Eatk1 = w_res0
 				Eatk2 = w_res1
 				Espl1 = w_res2
 				Espl2 = w_res3						
-			elif img[780,1490].tolist() == [253,125,0]:
+			elif Ecolor2[2]<100:
 				Eatk1 = w_res0
 				Eatk2 = w_res1
 				Eatk3 = w_res2
 				Espl1 = w_res3
 				Espl2 = w_res4						
-			elif img[780,1600].tolist() == [253,125,0]:
+			elif Ecolor2[2]<100:
 				Eatk1 = w_res0
 				Eatk2 = w_res1
 				Eatk3 = w_res2
@@ -588,23 +604,28 @@ class MainWindow(QWidget):
 			Fatk4 = ''
 			Fspl1 = ''
 			Fspl2 = ''
-
-			if img[780,310].tolist() == [253,125,0]:
+			
+			Fcolor2 = img[780,310].tolist()
+			Fcolor3 = img[780,420].tolist()
+			Fcolor4 = img[780,535].tolist()
+			Fcolor5 = img[780,650].tolist()
+					
+			if Fcolor2[2]<100:
 				Fatk1 = my_w_res0
 				Fspl1 = my_w_res1
 				Fspl2 = my_w_res2			
-			elif img[780,420].tolist() == [253,125,0]:
+			elif Fcolor3[2]<100:
 				Fatk1 = my_w_res0
 				Fatk2 = my_w_res1
 				Fspl1 = my_w_res2
 				Fspl2 = my_w_res3						
-			elif img[780,535].tolist() == [253,125,0]:
+			elif Fcolor4[2]<100:
 				Fatk1 = my_w_res0
 				Fatk2 = my_w_res1
 				Fatk3 = my_w_res2
 				Fspl1 = my_w_res3
 				Fspl2 = my_w_res4						
-			elif img[780,650].tolist() == [253,125,0]:
+			elif Fcolor5[2]<100:
 				Fatk1 = my_w_res0
 				Fatk2 = my_w_res1
 				Fatk3 = my_w_res2
@@ -622,16 +643,16 @@ class MainWindow(QWidget):
 			pixel_value = img[300,230].tolist()
 			if pixel_value == [227,229,234]:
 				battle_res = "失败"
-			elif pixel_value[0]>220 & pixel_value[0]<235 & pixel_value[1]>225 & pixel_value[1]<235 & pixel_value[2]>230 & pixel_value[2]<240:
+			elif pixel_value[0]>220 and pixel_value[0]<235 and pixel_value[1]>225 and pixel_value[1]<235 and pixel_value[2]>230 and pixel_value[2]<240:
 				battle_res = "失败"
 			else:
 				battle_res = "胜利"
 			print(battle_res)	
 
-			pixel_value_format = img[325,100].tolist()
-			if pixel_value_format == [139,107,69]:
+			pixel_value_format = img[340,100].tolist()
+			if pixel_value_format == [128,94,56]:
 				format = "进攻"
-			elif pixel_value_format[0]>135 & pixel_value_format[0]<145 & pixel_value_format[1]>100 & pixel_value_format[1]<115 & pixel_value_format[2]>65 & pixel_value_format[2]<75:
+			elif pixel_value_format[0]>120 and pixel_value_format[0]<140 and pixel_value_format[1]>85 and pixel_value_format[1]<105 and pixel_value_format[2]>45 and pixel_value_format[2]<65:
 				format = "进攻"
 			else:
 				format = "防守"
