@@ -10,6 +10,7 @@ import configparser
 import subprocess
 from string import punctuation
 from paddleocr import PPStructure
+from paddleocr import PaddleOCR, draw_ocrs
 import pandas as pd
 from jinja2 import Template
 
@@ -43,9 +44,9 @@ class MainWindow(QWidget):
 
 
 	def initUI(self):
-		self.setFixedSize(1280, 720)  
+		self.resize(1280, 720)  
 		self.setWindowTitle('普拉娜的笔记本 v1.2.3')
-		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
+		#self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.setAcceptDrops(True)			
 		
 		self.btnLoad = QPushButton('查看记录',self)
@@ -669,7 +670,7 @@ class MainWindow(QWidget):
 		df_length = len(df_img)
 		for num in range(0,df_length):
 			template_string_data = '''
-			<table border="1" align="right" style="background-color: rgba(255, 255, 255, 0.5);" >
+			<table border="1" align="center" style="background-color: rgba(255, 255, 255, 0.5);" >
 				<tr>
 					<th colspan="9">{{ UserId }}</th>
 				</tr>
