@@ -10,7 +10,7 @@ import configparser
 import subprocess
 from string import punctuation
 from paddleocr import PPStructure
-from paddleocr import PaddleOCR, draw_ocrs
+from paddleocr import PaddleOCR, draw_ocr
 import pandas as pd
 from jinja2 import Template
 
@@ -45,7 +45,7 @@ class MainWindow(QWidget):
 
 	def initUI(self):
 		self.resize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.2.3')
+		self.setWindowTitle('普拉娜的笔记本 v1.3.0_Beta')
 		#self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.setAcceptDrops(True)			
 		
@@ -57,13 +57,16 @@ class MainWindow(QWidget):
 		self.btnNew = QPushButton('新建记录表',self)
 		self.content = QTextEdit()
 		self.btnHelp = QPushButton('使用帮助',self)
-		self.btnSC = QRadioButton("简体中文（沙勒）")
-		self.btnTC = QRadioButton("繁体中文（夏萊）")
+		self.btnSC = QRadioButton("简体中文")
+		self.btnTC = QRadioButton("繁体中文")
+		self.btnJP = QRadioButton("日文")
 
 		if self.server_la == 'SC':
 			self.btnSC.setChecked(True)
 		elif self.server_la == 'TC':
 			self.btnTC.setChecked(True)
+		elif self.server_la == 'JP':
+			self.btnJP.setChecked(True)
 		
 		grid = QGridLayout()
 		self.setLayout(grid)
@@ -76,6 +79,7 @@ class MainWindow(QWidget):
 		RBLayout = QHBoxLayout()
 		RBLayout.addWidget(self.btnSC)
 		RBLayout.addWidget(self.btnTC)
+		RBLayout.addWidget(self.btnJP)
 		
 		grid.addWidget(self.content,1,2,7,2)
 		grid.addLayout(TopLayout,8,2,1,2)
@@ -97,6 +101,7 @@ class MainWindow(QWidget):
 		self.content.setStyleSheet("background-color : rgba(255, 255, 255, 50)")	
 		self.btnSC.setIcon(QIcon("QRadioButton::indicator:unchecked {border-image: url(./data/icon/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}"))
 		self.btnTC.setIcon(QIcon("QRadioButton::indicator:unchecked {border-image: url(./data/icon/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}"))
+		self.btnJP.setIcon(QIcon("QRadioButton::indicator:unchecked {border-image: url(./data/icon/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}"))
 		
 		self.btnLoad.clicked.connect(self.read_csv)
 		self.btnSearch.clicked.connect(self.user_search)
@@ -106,9 +111,22 @@ class MainWindow(QWidget):
 		self.btnNew.clicked.connect(self.new_table)
 		self.btnSC.toggled.connect(self.SC_select)
 		self.btnTC.toggled.connect(self.TC_select)
+		self.btnJP.toggled.connect(self.JP_select)
 		self.btnHelp.clicked.connect(self.show_help)
 		
 		self.show()
+		
+	def JP_select(self, event):
+		if self.server_la != 'JP':
+			self.cf.set('server', 'server_la', 'JP')
+			with open('./conf.ini', 'w') as configfile:
+				self.cf.write(configfile)
+			configfile.close()
+		
+			print('change to JP')	
+			app = QCoreApplication.instance()
+			app.quit()
+			subprocess.call([sys.executable] + sys.argv)
 		
 	def TC_select(self, event):
 		if self.server_la != 'TC':
@@ -193,6 +211,279 @@ class MainWindow(QWidget):
 				self.ocr_sc(file_path, img_path)
 			elif self.server_la == 'TC':
 				self.ocr_tc(file_path, img_path)
+			elif self.server_la == 'JP':
+				self.ocr_jp(file_path, img_path)
+				
+	def ocr_jp(self, file_path, img_path):
+		print('record: ' + file_path)
+		print('img: ' + img_path)
+		if(img_path == ''):
+			print("invaild image path!")
+		elif(file_path == ''):
+			print("invaild csv path!")
+		else:
+			ocr = PaddleOCR(use_angle_cls=True, lang="japan", show_log=False)
+			img = cv2.imread(img_path)
+			cv2.rectangle(img, (1800,790),(1000,870),(216,225,256), -1)
+			#cv2.rectangle(img, (140,790),(810,870),(246,247,247), -1)
+			cv2.rectangle(img, (1480,250),(1560,300),(216,225,256), -1)
+			cv2.rectangle(img, (1480,310),(1830,380),(216,225,256), -1)
+				
+			try:
+				img0 = img[795:920,150:240]
+				res0 = ''
+				result0 = ocr.ocr(img0, cls=True)
+				for i in range(len(result0[0])):
+					res0 = res0 + result0[0][i][1][0]
+				new_res0 = ''.join(i for i in res0 if i.isalnum())
+			except IndexError: 
+				new_res0 = ''
+				
+			try:
+				img1 = img[795:920,245:360]
+				res1 = ''
+				result1 = ocr.ocr(img1, cls=True)
+				for i in range(len(result1[0])):
+					res1 = res1 + result1[0][i][1][0]
+				new_res1 = ''.join(i for i in res1 if i.isalnum())
+			except IndexError: 
+				new_res1 = ''
+
+			try:
+				img2 = img[795:920,365:480]
+				res2 = ''
+				result2 = ocr.ocr(img2, cls=True)
+				for i in range(len(result2[0])):
+					res2 = res2 + result2[0][i][1][0]
+				new_res2 = ''.join(i for i in res2 if i.isalnum())
+			except IndexError: 
+				new_res2 = ''
+
+			try:
+				img3 = img[795:920,475:590]
+				res3 = ''
+				result3 = ocr.ocr(img3, cls=True)
+				for i in range(len(result3[0])):
+					res3 = res3 + result3[0][i][1][0]
+				new_res3 = ''.join(i for i in res3 if i.isalnum())
+			except IndexError: 
+				new_res3 = ''
+
+			try:
+				img4 = img[795:920,585:700]
+				res4 = ''
+				result4 = ocr.ocr(img4, cls=True)
+				for i in range(len(result4[0])):
+					res4 = res4 + result4[0][i][1][0]
+				new_res4 = ''.join(i for i in res4 if i.isalnum())
+			except IndexError: 
+				new_res4 = ''
+
+			try:
+				img5 = img[795:920,695:810]
+				res5 = ''
+				result5 = ocr.ocr(img5, cls=True)
+				for i in range(len(result5[0])):
+					res5 = res5 + result5[0][i][1][0]
+				new_res5 = ''.join(i for i in res5 if i.isalnum())
+			except IndexError: 
+				new_res5 = ''
+
+			print(new_res0+' '+new_res1+' '+new_res2+' '+new_res3+' '+new_res4+' '+new_res5)
+			
+			my_w_res0 = self.jpocr_to_sc(new_res0)
+			my_w_res1 = self.jpocr_to_sc(new_res1)
+			my_w_res2 = self.jpocr_to_sc(new_res2)
+			my_w_res3 = self.jpocr_to_sc(new_res3)
+			my_w_res4 = self.jpocr_to_sc(new_res4)
+			my_w_res5 = self.jpocr_to_sc(new_res5)
+			
+			Fatk1 = ''
+			Fatk2 = ''
+			Fatk3 = ''
+			Fatk4 = ''
+			Fspl1 = ''
+			Fspl2 = ''
+			
+			Fcolor2 = img[780,310].tolist()
+			Fcolor3 = img[780,420].tolist()
+			Fcolor4 = img[780,535].tolist()
+			Fcolor5 = img[780,650].tolist()
+
+			if Fcolor2[2]<100:
+				Fatk1 = my_w_res0
+				Fspl1 = my_w_res1
+				Fspl2 = my_w_res2			
+			elif Fcolor3[2]<100:
+				Fatk1 = my_w_res0
+				Fatk2 = my_w_res1
+				Fspl1 = my_w_res2
+				Fspl2 = my_w_res3						
+			elif Fcolor4[2]<100:
+				Fatk1 = my_w_res0
+				Fatk2 = my_w_res1
+				Fatk3 = my_w_res2
+				Fspl1 = my_w_res3
+				Fspl2 = my_w_res4						
+			elif Fcolor5[2]<100:
+				Fatk1 = my_w_res0
+				Fatk2 = my_w_res1
+				Fatk3 = my_w_res2
+				Fatk4 = my_w_res3
+				Fspl1 = my_w_res4
+				Fspl2 = my_w_res5
+			else:
+				Fatk1 = my_w_res0
+				Fatk2 = my_w_res1
+				Fatk3 = my_w_res2
+				Fatk4 = my_w_res3
+				Fspl1 = my_w_res4
+				Fspl2 = my_w_res5	
+
+			try:
+				img_u = img[230:390,1030:1860]
+				result_u = ocr.ocr(img_u, cls=True)
+				new_res_u = result_u[0][0][1][0]
+				new_winflag = result_u[0][-1][1][0]
+			except IndexError: 
+				new_res_u = ''
+				new_winflag = 'Win'
+				
+			if new_winflag == 'Win':
+				battle_res = "失败"
+			else:
+				battle_res = "胜利"
+				
+			print(new_res_u)
+			print(battle_res)
+
+			try:
+				em_img0 = img[795:920,1090:1205]
+				em_res0 = ''
+				em_result0 = ocr.ocr(em_img0, cls=True)
+				for i in range(len(em_result0[0])):
+					em_res0 = em_res0 + em_result0[0][i][1][0]
+				em_new_res0 = ''.join(i for i in em_res0 if i.isalnum())
+			except IndexError: 
+				em_new_res0 = ''
+				
+			try:
+				em_img1 = img[795:920,1200:1315]
+				em_res1 = ''
+				em_result1 = ocr.ocr(em_img1, cls=True)
+				for i in range(len(em_result1[0])):
+					em_res1 = em_res1 + em_result1[0][i][1][0]
+				em_new_res1 = ''.join(i for i in em_res1 if i.isalnum())
+			except IndexError: 
+				em_new_res1 = ''
+
+			try:
+				em_img2 = img[795:920,1310:1425]
+				em_res2 = ''
+				em_result2 = ocr.ocr(em_img2, cls=True)
+				for i in range(len(em_result2[0])):
+					em_res2 = em_res2 + em_result2[0][i][1][0]
+				em_new_res2 = ''.join(i for i in em_res2 if i.isalnum())
+			except IndexError: 
+				em_new_res2 = ''
+
+			try:
+				em_img3 = img[795:920,1420:1540]
+				em_res3 = ''
+				em_result3 = ocr.ocr(em_img3, cls=True)
+				for i in range(len(em_result3[0])):
+					em_res3 = em_res3 + em_result3[0][i][1][0]
+				em_new_res3 = ''.join(i for i in em_res3 if i.isalnum())
+			except IndexError: 
+				em_new_res3 = ''
+
+			try:
+				em_img4 = img[795:920,1535:1650]
+				em_res4 = ''
+				em_result4 = ocr.ocr(em_img4, cls=True)
+				for i in range(len(em_result4[0])):
+					em_res4 = em_res4 + em_result4[0][i][1][0]
+				em_new_res4 = ''.join(i for i in em_res4 if i.isalnum())
+			except IndexError: 
+				em_new_res4 = ''
+
+			try:
+				em_img5 = img[795:920,1650:1765]
+				em_res5 = ''
+				em_result5 = ocr.ocr(em_img5, cls=True)
+				for i in range(len(em_result5[0])):
+					em_res5 = em_res5 + em_result5[0][i][1][0]
+				em_new_res5 = ''.join(i for i in em_res5 if i.isalnum())
+			except IndexError: 
+				em_new_res5 = ''
+				
+			print(em_new_res0+' '+em_new_res1+' '+em_new_res2+' '+em_new_res3+' '+em_new_res4+' '+em_new_res5)
+	
+			w_res0 = self.jpocr_to_sc(em_new_res0)
+			w_res1 = self.jpocr_to_sc(em_new_res1)
+			w_res2 = self.jpocr_to_sc(em_new_res2)
+			w_res3 = self.jpocr_to_sc(em_new_res3)
+			w_res4 = self.jpocr_to_sc(em_new_res4)
+			w_res5 = self.jpocr_to_sc(em_new_res5)
+			
+			Eatk1 = ''
+			Eatk2 = ''
+			Eatk3 = ''
+			Eatk4 = ''
+			Espl1 = ''
+			Espl2 = ''
+			
+			Ecolor2 = img[780,1265].tolist()
+			Ecolor3 = img[780,1380].tolist()
+			Ecolor4 = img[780,1490].tolist()
+			Ecolor5 = img[780,1600].tolist()
+						
+			if Ecolor2[2]<100:
+				Eatk1 = w_res0
+				Espl1 = w_res1
+				Espl2 = w_res2			
+			elif Ecolor3[2]<100:
+				Eatk1 = w_res0
+				Eatk2 = w_res1
+				Espl1 = w_res2
+				Espl2 = w_res3						
+			elif Ecolor4[2]<100:
+				Eatk1 = w_res0
+				Eatk2 = w_res1
+				Eatk3 = w_res2
+				Espl1 = w_res3
+				Espl2 = w_res4						
+			elif Ecolor5[2]<100:
+				Eatk1 = w_res0
+				Eatk2 = w_res1
+				Eatk3 = w_res2
+				Eatk4 = w_res3
+				Espl1 = w_res4
+				Espl2 = w_res5
+			else:
+				Eatk1 = w_res0
+				Eatk2 = w_res1
+				Eatk3 = w_res2
+				Eatk4 = w_res3
+				Espl1 = w_res4
+				Espl2 = w_res5	
+
+			pixel_value_format = img[340,100].tolist()
+			print(pixel_value_format)
+			if pixel_value_format == [131,98,61]:
+				format = "进攻"
+			elif pixel_value_format[0]>120 and pixel_value_format[0]<140 and pixel_value_format[1]>90 and pixel_value_format[1]<110 and pixel_value_format[2]>50 and pixel_value_format[2]<70:
+				format = "进攻"
+			else:
+				format = "防守"
+			print(format)
+			
+			battle_list = [new_res_u, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format]
+			print(battle_list)
+			confirm_dialog = ConfirmDialog()
+			self.signal_setbattlelist.emit(battle_list,file_path)
+			if confirm_dialog.exec() == QDialog.Accepted:
+				pass
 		
 	def ocr_tc(self, file_path, img_path):
 		print('record: ' + file_path)
@@ -250,7 +541,7 @@ class MainWindow(QWidget):
 			except IndexError: 
 				new_res5 = ''
 			
-			print(new_res0 + new_res1 + new_res2 + new_res3 + new_res4 + new_res5)
+			print(new_res0+' '+new_res1+' '+new_res2+' '+new_res3+' '+new_res4+' '+new_res5)
 			
 			w_res0 = self.tcocr_to_sc(new_res0)
 			w_res1 = self.tcocr_to_sc(new_res1)
@@ -362,7 +653,7 @@ class MainWindow(QWidget):
 			except IndexError: 
 				my_new_res5 = ''
 			
-			print(my_new_res0 + my_new_res1 + my_new_res2 + my_new_res3 + my_new_res4 + my_new_res5)
+			print(my_new_res0+' '+my_new_res1+' '+my_new_res2+' '+my_new_res3+' '+my_new_res4+' '+my_new_res5)
 			
 			my_w_res0 = self.tcocr_to_sc(my_new_res0)
 			my_w_res1 = self.tcocr_to_sc(my_new_res1)
@@ -422,9 +713,7 @@ class MainWindow(QWidget):
 				format = "进攻"
 			else:
 				format = "防守"
-			print(format)
-			
-			
+			print(format)		
 			print(battle_res)		
 						
 			battle_list = [new_res6, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format]
@@ -538,7 +827,7 @@ class MainWindow(QWidget):
 				Espl1 = w_res4
 				Espl2 = w_res5				
 			
-			print(new_res0 + new_res1 + new_res2 + new_res3 + new_res4 + new_res5)
+			print(new_res0+' '+new_res1+' '+new_res2+' '+new_res3+' '+new_res4+' '+new_res5)
 			
 			img2 = img[250:370,1290:1860]
 			result2 = table_engine(img2)
@@ -590,7 +879,7 @@ class MainWindow(QWidget):
 			except IndexError: 
 				my_new_res5 = ''
 			
-			print(my_new_res0 + my_new_res1 + my_new_res2 + my_new_res3 + my_new_res4 + my_new_res5)
+			print(my_new_res0+' '+my_new_res1+' '+my_new_res2+' '+my_new_res3+' '+my_new_res4+' '+my_new_res5)
 			
 			my_w_res0 = self.scocr_to_sc(my_new_res0)
 			my_w_res1 = self.scocr_to_sc(my_new_res1)
@@ -778,6 +1067,9 @@ class MainWindow(QWidget):
 			pixmap = QPixmap("./data/images/bg.png")
 		elif self.server_la == 'TC':
 			pixmap = QPixmap("./data/images/bg_tc.png")
+		elif self.server_la == 'JP':
+			pixmap = QPixmap("./data/images/bg_jp.png")
+		
 		painter.drawPixmap(self.rect(), pixmap)
 		
 	def get_id(self,userid):
@@ -805,6 +1097,14 @@ class MainWindow(QWidget):
 		
 	def tcocr_to_sc(self,stud):
 		stud_dict = pd.read_json('./data/studstr_tcocr2sc.json', typ='series')
+		try:
+			stud_name = stud_dict[stud]
+		except KeyError:
+			stud_name = ''
+		return stud_name
+	
+	def jpocr_to_sc(self,stud):
+		stud_dict = pd.read_json('./data/studstr_jpocr2sc.json', typ='series')
 		try:
 			stud_name = stud_dict[stud]
 		except KeyError:
@@ -1016,17 +1316,8 @@ class ConfirmDialog(QDialog):
 		else:
 			return '1NoData'
 		
-	def scocr_to_sc(self,stud):
-		stud_dict = pd.read_json('./data/studstr_scocr2sc.json', typ='series')
-		try:
-			stud_name = stud_dict[stud]
-		except KeyError:
-			stud_name = ''
-		return stud_name
-		
 	def insert_table(self, event):
 		print('insert: ')
-		
 		userId = self.lineEdit_user.text()
 		result = self.ComboBox_res.currentText()
 		Fatk1 = self.sc_to_code(self.lineEdit_f1.text())
