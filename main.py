@@ -34,7 +34,7 @@ class MainWindow(QWidget):
 		super().__init__()
 		self.fname = ''
 		self.picname = ''
-		self.userid =''
+		self.userid = ''
 		self.cf = configparser.ConfigParser()
 		self.cf.read("./conf.ini")
 		self.last_filepath = self.cf.get("filepath","last_filepath")
@@ -45,7 +45,7 @@ class MainWindow(QWidget):
 
 	def initUI(self):
 		self.resize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.3.0_Beta')
+		self.setWindowTitle('普拉娜的笔记本 v1.3.0_Beta 日文识别问题请进群反馈945558059')
 		#self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.setAcceptDrops(True)			
 		
@@ -55,6 +55,7 @@ class MainWindow(QWidget):
 		self.btnAbout = QPushButton('关于',self)
 		self.btnRefresh = QPushButton('刷新记录',self)
 		self.btnNew = QPushButton('新建记录表',self)
+		self.btnData = QPushButton('数据分析',self)
 		self.content = QTextEdit()
 		self.btnHelp = QPushButton('使用帮助',self)
 		self.btnSC = QRadioButton("简体中文")
@@ -81,15 +82,16 @@ class MainWindow(QWidget):
 		RBLayout.addWidget(self.btnTC)
 		RBLayout.addWidget(self.btnJP)
 		
-		grid.addWidget(self.content,1,2,7,2)
-		grid.addLayout(TopLayout,8,2,1,2)
+		grid.addWidget(self.content,1,2,8,2)
+		grid.addLayout(TopLayout,9,2,1,2)
 		grid.addWidget(self.btnLoad,2,1,1,1)
 		grid.addWidget(self.btnSave,3,1,1,1)
 		grid.addWidget(self.btnSearch,1,1,1,1)		
 		grid.addWidget(self.btnNew,4,1,1,1)
-		grid.addLayout(RBLayout,6,1,1,1)
-		grid.addWidget(self.btnHelp,7,1,1,1)
-		grid.addWidget(self.btnAbout,8,1,1,1)
+		grid.addWidget(self.btnData,5,1,1,1)
+		grid.addLayout(RBLayout,7,1,1,1)
+		grid.addWidget(self.btnHelp,8,1,1,1)
+		grid.addWidget(self.btnAbout,9,1,1,1)
 		
 		
 		self.btnLoad.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
@@ -97,6 +99,7 @@ class MainWindow(QWidget):
 		self.btnRefresh.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnAbout.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnNew.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnData.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnHelp.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.content.setStyleSheet("background-color : rgba(255, 255, 255, 50)")	
 		self.btnSC.setIcon(QIcon("QRadioButton::indicator:unchecked {border-image: url(./data/icon/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}"))
@@ -108,6 +111,7 @@ class MainWindow(QWidget):
 		self.btnSave.clicked.connect(self.add_btnrecord)
 		self.btnAbout.clicked.connect(self.show_about)
 		self.btnRefresh.clicked.connect(self.refresh_table)
+		self.btnData.clicked.connect(self.data_dashboard)
 		self.btnNew.clicked.connect(self.new_table)
 		self.btnSC.toggled.connect(self.SC_select)
 		self.btnTC.toggled.connect(self.TC_select)
@@ -139,7 +143,6 @@ class MainWindow(QWidget):
 			app = QCoreApplication.instance()
 			app.quit()
 			subprocess.call([sys.executable] + sys.argv)
-
 		
 	def SC_select(self, event):
 		if self.server_la != 'SC':
@@ -152,7 +155,6 @@ class MainWindow(QWidget):
 			app = QCoreApplication.instance()
 			app.quit()
 			subprocess.call([sys.executable] + sys.argv)
-	
 		
 	def dragEnterEvent(self, event):
 		if event.mimeData().hasUrls:
@@ -173,7 +175,6 @@ class MainWindow(QWidget):
 		if the_help_dialog.exec() == QDialog.Accepted:
 			pass
 
-
 	def add_newrecord(self, event):
 		img_path = self.picname
 		file_path = str(self.fname)	
@@ -182,7 +183,6 @@ class MainWindow(QWidget):
 			self.ocr_sc(file_path, img_path)
 		elif self.server_la == 'TC':
 			self.ocr_tc(file_path, img_path)
-
 		
 	def add_btnrecord(self, event):
 		if self.fname == '':
@@ -1054,7 +1054,19 @@ class MainWindow(QWidget):
 			self.signal_filename.emit(file_path)
 			if search_dialog.exec() == QDialog.Accepted:
 				pass
-			
+				
+	def data_dashboard(self):
+		if self.fname == '' :
+			the_dialog = NoCsvOpenDialog()
+			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+				pass
+		else:
+			dash_dialog = DashboardDialog()
+			dash_dialog.signal_setstu.connect(self.get_stu)
+			file_path = str(self.fname)
+			self.signal_filename.emit(file_path)
+			if dash_dialog.exec() == QDialog.Accepted:
+				pass			
 
 	def new_table(self):
 		new_dialog = NewCsvDialog()
@@ -1071,6 +1083,104 @@ class MainWindow(QWidget):
 			pixmap = QPixmap("./data/images/bg_jp.png")
 		
 		painter.drawPixmap(self.rect(), pixmap)
+		
+	def get_stu(self, stuid_list0, stuid_list1):
+		self.content.clear()
+		f_namelist = []
+		e_namelist = []
+		f_printlist = []
+		e_printlist = []
+		
+		stuid_list0 = list(filter(None, stuid_list0))
+		if stuid_list1 != []:
+			stuid_list1 = list(filter(None, stuid_list1))
+		
+		for stuid in stuid_list0:
+			f_printlist.append(' ')
+			f_printlist.append(stuid)
+			stuid = self.sc_to_code(stuid)
+			f_namelist.append(stuid)
+		try:
+			stuid_list0 = list(filter('', stuid_list0))
+		except TypeError:
+			print(' ')
+		print('get')
+		print(f_namelist)
+			
+		if stuid_list1 != []:
+			for stuid in stuid_list1:
+				e_printlist.append(' ')
+				e_printlist.append(stuid)
+				stuid = self.sc_to_code(stuid)
+				e_namelist.append(stuid)
+			try:
+				stuid_list1 = list(filter('', stuid_list1))
+			except TypeError:
+				print(' ')
+			print(e_namelist)
+		
+		f_str_print = str(f_printlist)
+		f_str_print = f_str_print.replace('[', '')
+		f_str_print = f_str_print.replace(']', '')
+		f_str_print = f_str_print.replace("'", "")
+		f_str_print = f_str_print.replace(',', '')
+
+		wr_word = '    ' + f_str_print
+		
+		if stuid_list1 != []:
+			e_str_printlist = str(e_printlist)
+			e_str_printlist = e_str_printlist.replace('[', '')
+			e_str_printlist = e_str_printlist.replace(']', '')
+			e_str_printlist = e_str_printlist.replace("'", "")
+			e_str_printlist = e_str_printlist.replace(',', '')
+			wr_word1 = wr_word + ' <i>对阵</i>' + e_str_printlist
+		
+		df = pd.read_csv(self.fname)
+		f_namelist_length = len(f_namelist) - 1		
+		if stuid_list1 != []:
+			e_namelist_length = len(e_namelist) - 1
+		self.search_stu_f(df, f_namelist, f_namelist_length, wr_word, stuid_list1, e_namelist, e_namelist_length, wr_word1)
+		
+		
+	def search_stu_f(self, df, f_namelist, f_namelist_length, wr_word, stuid_list1, e_namelist, e_namelist_length, wr_word1):
+		self.content.clear()
+		df = df.copy()
+		if f_namelist_length == -1:
+			if stuid_list1 == []:
+				winrate = '{:.2%}'.format(self.cal_winrate(df))
+				new_wr_word = wr_word + " <i>胜率：</i>" + winrate			
+				self.show_csv(df)
+				self.content.append('<h2>'+new_wr_word+'</h2>')
+			elif stuid_list1 != []:
+				self.search_stu_e(df, e_namelist, e_namelist_length, wr_word1)
+		else:
+			tag = f_namelist[f_namelist_length]
+			res = df.query('FAttacker1 == @tag | FAttacker2 == @tag | FAttacker3 == @tag | FAttacker4 == @tag | FSpecial1 == @tag | FSpecial2 == @tag')
+			self.search_stu_f(res,f_namelist, f_namelist_length-1,wr_word,stuid_list1, e_namelist, e_namelist_length, wr_word1)	
+	
+	def search_stu_e(self, df, e_namelist, e_namelist_length, wr_word1):
+		self.content.clear()
+		df = df.copy()
+		if e_namelist_length == -1:
+			winrate = '{:.2%}'.format(self.cal_winrate(df))
+			new_wr_word = wr_word1 + "<i>胜率：</i>" + winrate			
+			self.show_csv(df)
+			self.content.append('<h2>'+new_wr_word+'</h2>')
+		else:
+			tag = e_namelist[e_namelist_length]
+			res = df.query('EAttacker1 == @tag | EAttacker2 == @tag | EAttacker3 == @tag | EAttacker4 == @tag | ESpecial1 == @tag | ESpecial2 == @tag')
+			self.search_stu_e(res,e_namelist, e_namelist_length-1,wr_word1)	
+	
+	def cal_winrate(self, res):
+		try:
+			win_count = res['Result'].value_counts()['胜利']
+		except KeyError:
+			win_count = 0
+		total_count = len(res)
+		print('win: ' + str(win_count))
+		print('total: ' + str(total_count))
+		winrate = win_count / total_count
+		return winrate
 		
 	def get_id(self,userid):
 		self.userid = userid
@@ -1110,7 +1220,8 @@ class MainWindow(QWidget):
 		except KeyError:
 			stud_name = ''
 		return stud_name
-		
+	
+	
 class HelpDialog(QDialog):
 		def __init__(self):
 			super().__init__()
@@ -1347,7 +1458,89 @@ class ConfirmDialog(QDialog):
 		painter.drawPixmap(self.rect(), pixmap)
 
 		
-			
+
+class DashboardDialog(QDialog):
+	signal_setstu = Signal(list, list)
+	
+	def __init__(self):
+		super().__init__()
+		self.initUI()
+		window.signal_filename.connect(self.get_file_name)
+		
+		
+	def initUI(self):
+		self.setFixedSize(400, 400)  
+		self.setWindowTitle('查询我方学生胜率')
+		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
+		
+		self.label0 = QLabel('请输入官中学生名组合，少于三个则不填留空。', self)
+		self.label1 = QLabel('我方', self)
+		self.lineEdit0 = QLineEdit(self)
+		self.lineEdit1 = QLineEdit(self)
+		self.lineEdit2 = QLineEdit(self)
+		self.label2 = QLabel('敌方', self)
+		self.lineEdit3 = QLineEdit(self)
+		self.lineEdit4 = QLineEdit(self)
+		self.lineEdit5 = QLineEdit(self)
+		
+		self.btnOk = QPushButton('查询',self)
+		
+		self.btnOk.clicked.connect(self.set_stuid)
+		self.btnOk.clicked.connect(self.close)	
+		
+		RBLayout0 = QHBoxLayout()
+		RBLayout0.addWidget(self.lineEdit0)
+		RBLayout0.addWidget(self.lineEdit1)
+		RBLayout0.addWidget(self.lineEdit2)
+		RBLayout1 = QHBoxLayout()
+		RBLayout1.addWidget(self.lineEdit3)
+		RBLayout1.addWidget(self.lineEdit4)
+		RBLayout1.addWidget(self.lineEdit5)
+		
+		vbox = QVBoxLayout()
+		vbox.addWidget(self.label0)
+		vbox.addWidget(self.label1)
+		vbox.addLayout(RBLayout0)
+		vbox.addWidget(self.label2)
+		vbox.addLayout(RBLayout1)
+		vbox.addWidget(self.btnOk)
+		vbox.addStretch(1)
+		self.setLayout(vbox)
+		self.show()
+		
+	def get_file_name(self, file_path):
+		df = pd.read_csv(file_path)		
+		stud_dict = pd.read_json('./data/studstr_sc2code.json', typ='series')
+		completer_words = list(stud_dict.keys())
+		completer = QCompleter(completer_words)
+		completer.setFilterMode(Qt.MatchContains)
+		self.lineEdit0.setCompleter(completer)
+		self.lineEdit1.setCompleter(completer)
+		self.lineEdit2.setCompleter(completer)
+		self.lineEdit3.setCompleter(completer)
+		self.lineEdit4.setCompleter(completer)
+		self.lineEdit5.setCompleter(completer)
+		
+	def paintEvent(self, event):		
+		painter = QPainter(self)
+		pixmap = QPixmap("./data/images/search.png")
+		painter.drawPixmap(self.rect(), pixmap)
+		
+		
+	def set_stuid(self):
+		stuid0 = self.lineEdit0.text()
+		stuid1 = self.lineEdit1.text()
+		stuid2 = self.lineEdit2.text()
+		stuid3 = self.lineEdit3.text()
+		stuid4 = self.lineEdit4.text()
+		stuid5 = self.lineEdit5.text()
+		stuid_list0 = [stuid0, stuid1, stuid2]
+		print(stuid_list0)
+		stuid_list1 = [stuid3, stuid4, stuid5]
+		print(stuid_list1)
+		self.signal_setstu.emit(stuid_list0, stuid_list1)
+		
+	
 class SearchDialog(QDialog):
 	signal_setid = Signal(str)
 	
