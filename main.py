@@ -13,6 +13,8 @@ from paddleocr import PPStructure
 from paddleocr import PaddleOCR, draw_ocr
 import pandas as pd
 from jinja2 import Template
+from tkinter import *
+from tkinter import filedialog, messagebox
 
 from PySide6.QtWidgets import *
 from PySide6.QtGui import *
@@ -35,6 +37,7 @@ class MainWindow(QWidget):
 		self.fname = ''
 		self.picname = ''
 		self.userid = ''
+		self.df_output = pd.DataFrame()
 		self.cf = configparser.ConfigParser()
 		self.cf.read("./conf.ini")
 		self.last_filepath = self.cf.get("filepath","last_filepath")
@@ -45,15 +48,19 @@ class MainWindow(QWidget):
 
 	def initUI(self):
 		self.resize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.3.0_Beta 日文识别问题请进群反馈945558059')
+		self.setWindowTitle('普拉娜的笔记本 v1.3.2')
 		#self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.setAcceptDrops(True)			
 		
 		self.btnLoad = QPushButton('查看记录',self)
 		self.btnSave = QPushButton('保存记录',self)
+		self.btnMSave = QPushButton('手动保存记录',self)
 		self.btnSearch = QPushButton('查询用户历史阵容',self)
 		self.btnAbout = QPushButton('关于',self)
 		self.btnRefresh = QPushButton('刷新记录',self)
+		self.btnReplaceid = QPushButton('替换用户ID',self)
+		self.btnDelete = QPushButton('删除记录项',self)
+		self.btnOutput = QPushButton('导出为新记录表',self)
 		self.btnNew = QPushButton('新建记录表',self)
 		self.btnData = QPushButton('数据分析',self)
 		self.content = QTextEdit()
@@ -74,29 +81,36 @@ class MainWindow(QWidget):
 		
 		TopLayout = QHBoxLayout()
 		TopLayout.addStretch(1)
+		TopLayout.addWidget(self.btnOutput)
+		TopLayout.addWidget(self.btnDelete)
+		TopLayout.addWidget(self.btnReplaceid)
 		TopLayout.addWidget(self.btnRefresh)
-		
-		
+	
 		RBLayout = QHBoxLayout()
 		RBLayout.addWidget(self.btnSC)
 		RBLayout.addWidget(self.btnTC)
 		RBLayout.addWidget(self.btnJP)
 		
-		grid.addWidget(self.content,1,2,8,2)
-		grid.addLayout(TopLayout,9,2,1,2)
+		grid.addWidget(self.content,1,2,9,2)
+		grid.addLayout(TopLayout,10,2,1,2)
 		grid.addWidget(self.btnLoad,2,1,1,1)
 		grid.addWidget(self.btnSave,3,1,1,1)
+		grid.addWidget(self.btnMSave,4,1,1,1)
 		grid.addWidget(self.btnSearch,1,1,1,1)		
-		grid.addWidget(self.btnNew,4,1,1,1)
-		grid.addWidget(self.btnData,5,1,1,1)
-		grid.addLayout(RBLayout,7,1,1,1)
-		grid.addWidget(self.btnHelp,8,1,1,1)
-		grid.addWidget(self.btnAbout,9,1,1,1)
+		grid.addWidget(self.btnNew,5,1,1,1)
+		grid.addWidget(self.btnData,6,1,1,1)
+		grid.addLayout(RBLayout,8,1,1,1)
+		grid.addWidget(self.btnHelp,9,1,1,1)
+		grid.addWidget(self.btnAbout,10,1,1,1)
 		
 		
 		self.btnLoad.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnSave.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnMSave.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnRefresh.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnReplaceid.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnDelete.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnOutput.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnAbout.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnNew.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnData.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
@@ -109,8 +123,12 @@ class MainWindow(QWidget):
 		self.btnLoad.clicked.connect(self.read_csv)
 		self.btnSearch.clicked.connect(self.user_search)
 		self.btnSave.clicked.connect(self.add_btnrecord)
+		self.btnMSave.clicked.connect(self.addmanually_btnrecord)
 		self.btnAbout.clicked.connect(self.show_about)
 		self.btnRefresh.clicked.connect(self.refresh_table)
+		self.btnReplaceid.clicked.connect(self.replace_id)
+		self.btnDelete.clicked.connect(self.delete_record)
+		self.btnOutput.clicked.connect(self.output_record)
 		self.btnData.clicked.connect(self.data_dashboard)
 		self.btnNew.clicked.connect(self.new_table)
 		self.btnSC.toggled.connect(self.SC_select)
@@ -184,6 +202,23 @@ class MainWindow(QWidget):
 		elif self.server_la == 'TC':
 			self.ocr_tc(file_path, img_path)
 		
+	def addmanually_btnrecord(self, event):
+		if self.fname == '':
+			the_dialog = NoCsvOpenDialog()
+			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+				pass
+		else:
+			file_path = str(self.fname)
+			if(file_path == ''):
+				print("invaild csv path!")
+			print('record: ' + file_path)
+			battle_list = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
+			
+			confirm_dialog = ConfirmDialog()
+			self.signal_setbattlelist.emit(battle_list,file_path)
+			if confirm_dialog.exec() == QDialog.Accepted:
+				pass
+	
 	def add_btnrecord(self, event):
 		if self.fname == '':
 			the_dialog = NoCsvOpenDialog()
@@ -191,9 +226,9 @@ class MainWindow(QWidget):
 				pass
 		else:
 			if self.last_filepath == '':
-				img_name = QFileDialog.getOpenFileName(self, '选择截图', '.', '*.png')
+				img_name = QFileDialog.getOpenFileName(self, '选择截图（不支持中文路径）', '.', '*.png')
 			else:
-				img_name = QFileDialog.getOpenFileName(self, '选择截图', self.last_filepath, '*.png')
+				img_name = QFileDialog.getOpenFileName(self, '选择截图（不支持中文路径）', self.last_filepath, '*.png')
 				
 			img_path = img_name[0]
 			file_path = str(self.fname)
@@ -991,20 +1026,20 @@ class MainWindow(QWidget):
 			html_data = template_data.render(
 				UserId = '<br><br>' + str(df_img.iloc[num,0]),
 				Date = '<br><br>' + str(df_img.iloc[num,1]),				
-				FAttacker1 = '<img src=' + url + '/data/images/stud/' + df_img.iloc[num,2] + '.png width=80/>',
-				FAttacker2 = '<img src=' + url + '/data/images/stud/' + df_img.iloc[num,3] + '.png width=80/>',
-				FAttacker3 = '<img src=' + url + '/data/images/stud/' + df_img.iloc[num,4] + '.png width=80/>',
-				FAttacker4 = '<img src=' + url + '/data/images/stud/' + df_img.iloc[num,5] + '.png width=80/>',
-				FSpecial1 = '<img src=' + url + '/data/images/stud/' + df_img.iloc[num,6] + '.png width=80/>',
-				FSpecial2 = '<img src=' + url + '/data/images/stud/' + df_img.iloc[num,7] + '.png width=80/>',
-				Formation = '<br><img src=' + url + '/data/images/' + df_img.iloc[num,8] + '.png width=80/>',
-				EAttacker1 = '<img src=' + url + '/data/images/stud/' + df_img.iloc[num,9] + '.png width=80/>',
-				EAttacker2 = '<img src=' + url + '/data/images/stud/' + df_img.iloc[num,10] + '.png width=80/>',
-				EAttacker3 = '<img src=' + url + '/data/images/stud/' + df_img.iloc[num,11] + '.png width=80/>',
-				EAttacker4 = '<img src=' + url + '/data/images/stud/' + df_img.iloc[num,12] + '.png width=80/>',
-				ESpecial1 = '<img src=' + url + '/data/images/stud/' + df_img.iloc[num,13] + '.png width=80/>',
-				ESpecial2 = '<img src=' + url + '/data/images/stud/' + df_img.iloc[num,14] + '.png width=80/>',
-				Result = '<br><img src=' + url + '/data/images/' + df_img.iloc[num,15] + '.png width=80/>',
+				FAttacker1 = '<img src=' + './data/images/stud/' + df_img.iloc[num,2] + '.png width=80/>',
+				FAttacker2 = '<img src=' + './data/images/stud/' + df_img.iloc[num,3] + '.png width=80/>',
+				FAttacker3 = '<img src=' + './data/images/stud/' + df_img.iloc[num,4] + '.png width=80/>',
+				FAttacker4 = '<img src=' + './data/images/stud/' + df_img.iloc[num,5] + '.png width=80/>',
+				FSpecial1 = '<img src=' + './data/images/stud/' + df_img.iloc[num,6] + '.png width=80/>',
+				FSpecial2 = '<img src=' + './data/images/stud/' + df_img.iloc[num,7] + '.png width=80/>',
+				Formation = '<br><img src=' + './data/images/' + df_img.iloc[num,8] + '.png width=80/>',
+				EAttacker1 = '<img src=' + './data/images/stud/' + df_img.iloc[num,9] + '.png width=80/>',
+				EAttacker2 = '<img src=' + './data/images/stud/' + df_img.iloc[num,10] + '.png width=80/>',
+				EAttacker3 = '<img src=' + './data/images/stud/' + df_img.iloc[num,11] + '.png width=80/>',
+				EAttacker4 = '<img src=' + './data/images/stud/' + df_img.iloc[num,12] + '.png width=80/>',
+				ESpecial1 = '<img src=' + './data/images/stud/' + df_img.iloc[num,13] + '.png width=80/>',
+				ESpecial2 = '<img src=' + './data/images/stud/' + df_img.iloc[num,14] + '.png width=80/>',
+				Result = '<br><img src=' + './data/images/' + df_img.iloc[num,15] + '.png width=80/>',
 				Me = '<br><br>' + '我的阵容',
 				space = ''
 			)
@@ -1022,8 +1057,11 @@ class MainWindow(QWidget):
 			print(self.fname)
 			df = pd.read_csv(self.fname)	
 			self.content.clear()
-			df_img = df.tail(50)
+			df_img = df
 			self.show_csv(df_img)
+			winrate = '{:.2%}'.format(self.cal_winrate(df_img))
+			new_wr_word = ' 胜率：' + winrate
+			self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')
 			
 	def refresh_table(self, event):
 		if self.fname == '' :
@@ -1034,9 +1072,52 @@ class MainWindow(QWidget):
 			print(self.fname)
 			df = pd.read_csv(self.fname)	
 			self.content.clear()
-			df_img = df.tail(50)
+			df_img = df
 			self.show_csv(df_img)
+			winrate = '{:.2%}'.format(self.cal_winrate(df_img))
+			new_wr_word = ' 胜率：' + winrate
+			self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')
+			
+	def replace_id(self, event):
+		if self.fname == '' :
+			the_dialog = NoCsvOpenDialog()
+			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+				pass
+		else:
+			replace_dialog = ReplaceDialog()
+			file_path = str(self.fname)
+			print(file_path)
+			self.signal_filename.emit(file_path)
+			if replace_dialog.exec() == QDialog.Accepted:
+				pass
 				
+	def delete_record(self, event):
+		if self.fname == '' :
+			the_dialog = NoCsvOpenDialog()
+			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+				pass
+		else:
+			delete_dialog = DeleteDialog()
+			file_path = str(self.fname)
+			print(file_path)
+			self.signal_filename.emit(file_path)
+			if delete_dialog.exec() == QDialog.Accepted:
+				pass
+			
+	def	output_record(self, event):
+		if self.df_output.empty:
+			the_dialog = NoCsvOpenDialog()
+			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+				pass
+		else:
+			root = Tk()
+			root.withdraw()		
+			file_path = filedialog.asksaveasfilename(defaultextension='.csv', title='保存记录', filetypes=[('CSV Document', '*.csv')])		
+			if file_path != '':
+				self.df_output.to_csv(file_path, index=False, encoding="utf-8")
+				self.df_output = pd.DataFrame()
+				print('Output has done.')
+	
 	def show_about(self):
 		about_dialog = AboutDialog()
 		if about_dialog.exec() == QDialog.Accepted:
@@ -1090,23 +1171,27 @@ class MainWindow(QWidget):
 		e_namelist = []
 		f_printlist = []
 		e_printlist = []
+		f_namelist_length = 0
+		e_namelist_length = 0
+		f_str_print = ''
+		e_str_print = ''
 		
-		stuid_list0 = list(filter(None, stuid_list0))
+		print('get')
+		if stuid_list0 != []:
+			stuid_list0 = list(filter(None, stuid_list0))
 		if stuid_list1 != []:
 			stuid_list1 = list(filter(None, stuid_list1))
-		
-		for stuid in stuid_list0:
-			f_printlist.append(' ')
-			f_printlist.append(stuid)
-			stuid = self.sc_to_code(stuid)
-			f_namelist.append(stuid)
-		try:
-			stuid_list0 = list(filter('', stuid_list0))
-		except TypeError:
-			print(' ')
-		print('get')
-		print(f_namelist)
-			
+		if stuid_list0 != []:
+			for stuid in stuid_list0:
+				f_printlist.append(' ')
+				f_printlist.append(stuid)
+				stuid = self.sc_to_code(stuid)
+				f_namelist.append(stuid)
+			try:
+				stuid_list0 = list(filter('', stuid_list0))
+			except TypeError:
+				print(' ')
+			print(f_namelist)		
 		if stuid_list1 != []:
 			for stuid in stuid_list1:
 				e_printlist.append(' ')
@@ -1119,13 +1204,14 @@ class MainWindow(QWidget):
 				print(' ')
 			print(e_namelist)
 		
-		f_str_print = str(f_printlist)
-		f_str_print = f_str_print.replace('[', '')
-		f_str_print = f_str_print.replace(']', '')
-		f_str_print = f_str_print.replace("'", "")
-		f_str_print = f_str_print.replace(',', '')
+		if stuid_list0 != []:
+			f_str_print = str(f_printlist)
+			f_str_print = f_str_print.replace('[', '')
+			f_str_print = f_str_print.replace(']', '')
+			f_str_print = f_str_print.replace("'", "")
+			f_str_print = f_str_print.replace(',', '')
 
-		wr_word = '    ' + f_str_print
+		wr_word = '<i>' + f_str_print + '</i>'
 		
 		if stuid_list1 != []:
 			e_str_printlist = str(e_printlist)
@@ -1133,24 +1219,30 @@ class MainWindow(QWidget):
 			e_str_printlist = e_str_printlist.replace(']', '')
 			e_str_printlist = e_str_printlist.replace("'", "")
 			e_str_printlist = e_str_printlist.replace(',', '')
-			wr_word1 = wr_word + ' <i>对阵</i>' + e_str_printlist
+			wr_word1 = wr_word + ' 对阵<i>' + e_str_printlist + '</i>'
+		else:
+			wr_word1 = wr_word + ' 对阵'
 		
 		df = pd.read_csv(self.fname)
-		f_namelist_length = len(f_namelist) - 1		
+		if stuid_list0 != []:
+			f_namelist_length = len(f_namelist) - 1		
 		if stuid_list1 != []:
 			e_namelist_length = len(e_namelist) - 1
-		self.search_stu_f(df, f_namelist, f_namelist_length, wr_word, stuid_list1, e_namelist, e_namelist_length, wr_word1)
-		
-		
+		if stuid_list0 != []:
+			self.search_stu_f(df, f_namelist, f_namelist_length, wr_word, stuid_list1, e_namelist, e_namelist_length, wr_word1)
+		else:
+			self.search_stu_e(df, e_namelist, e_namelist_length, wr_word1)
+				
 	def search_stu_f(self, df, f_namelist, f_namelist_length, wr_word, stuid_list1, e_namelist, e_namelist_length, wr_word1):
 		self.content.clear()
 		df = df.copy()
 		if f_namelist_length == -1:
 			if stuid_list1 == []:
 				winrate = '{:.2%}'.format(self.cal_winrate(df))
-				new_wr_word = wr_word + " <i>胜率：</i>" + winrate			
+				new_wr_word = wr_word + ' 胜率：' + winrate
 				self.show_csv(df)
-				self.content.append('<h2>'+new_wr_word+'</h2>')
+				self.df_output = df.copy()
+				self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')
 			elif stuid_list1 != []:
 				self.search_stu_e(df, e_namelist, e_namelist_length, wr_word1)
 		else:
@@ -1163,9 +1255,10 @@ class MainWindow(QWidget):
 		df = df.copy()
 		if e_namelist_length == -1:
 			winrate = '{:.2%}'.format(self.cal_winrate(df))
-			new_wr_word = wr_word1 + "<i>胜率：</i>" + winrate			
+			new_wr_word = wr_word1 + " 胜率：" + winrate			
 			self.show_csv(df)
-			self.content.append('<h2>'+new_wr_word+'</h2>')
+			self.df_output = df.copy()
+			self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')
 		else:
 			tag = e_namelist[e_namelist_length]
 			res = df.query('EAttacker1 == @tag | EAttacker2 == @tag | EAttacker3 == @tag | EAttacker4 == @tag | ESpecial1 == @tag | ESpecial2 == @tag')
@@ -1188,10 +1281,14 @@ class MainWindow(QWidget):
 		self.content.clear()
 		self.content.append(userid)
 		
-		df = pd.read_csv(self.fname)	
+		df = pd.read_csv(self.fname)
 		df_img = df[df['UserId'] == userid]
 		print(df_img)
 		self.show_csv(df_img)
+		self.df_output = df_img.copy()
+		winrate = '{:.2%}'.format(self.cal_winrate(df_img))
+		new_wr_word = ' 胜率：' + winrate
+		self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')
 			
 	def sc_to_code(self,stud):
 		stud_dict = pd.read_json('./data/studstr_sc2code.json', typ='series')
@@ -1220,7 +1317,6 @@ class MainWindow(QWidget):
 		except KeyError:
 			stud_name = ''
 		return stud_name
-	
 	
 class HelpDialog(QDialog):
 		def __init__(self):
@@ -1457,8 +1553,6 @@ class ConfirmDialog(QDialog):
 		pixmap = QPixmap("./data/images/confirm.png")
 		painter.drawPixmap(self.rect(), pixmap)
 
-		
-
 class DashboardDialog(QDialog):
 	signal_setstu = Signal(list, list)
 	
@@ -1539,8 +1633,7 @@ class DashboardDialog(QDialog):
 		stuid_list1 = [stuid3, stuid4, stuid5]
 		print(stuid_list1)
 		self.signal_setstu.emit(stuid_list0, stuid_list1)
-		
-	
+			
 class SearchDialog(QDialog):
 	signal_setid = Signal(str)
 	
@@ -1585,7 +1678,60 @@ class SearchDialog(QDialog):
 	def set_userid(self):
 		userid = self.lineEdit.text()
 		self.signal_setid.emit(userid)
+
+class ReplaceDialog(QDialog):
+	def __init__(self):
+		super().__init__()
+		self.initUI()
+		window.signal_filename.connect(self.get_file_name)
 		
+		
+	def initUI(self):
+		self.setFixedSize(400, 400)  
+		self.setWindowTitle('替换用户ID')
+		
+		self.fname = ''
+		
+		self.label = QLabel('请输入需要被替换的ID', self)
+		self.lineEdit = QLineEdit(self)
+		self.label1 = QLabel('请输入需要替换后的ID', self)
+		self.lineEdit1 = QLineEdit(self)
+		self.btnOk = QPushButton('替换',self)
+		
+		self.btnOk.clicked.connect(self.replace_id)
+		self.btnOk.clicked.connect(self.close)	
+		
+		vbox = QVBoxLayout()
+		vbox.addWidget(self.label)
+		vbox.addWidget(self.lineEdit)
+		vbox.addWidget(self.label1)
+		vbox.addWidget(self.lineEdit1)
+		vbox.addWidget(self.btnOk)
+		vbox.addStretch(1)
+		self.setLayout(vbox)
+		self.show()
+		
+	def get_file_name(self, file_path):
+		df = pd.read_csv(file_path)
+		self.fname = file_path
+		user_list = list(set(df['UserId']))
+		completer = QCompleter(user_list)
+		completer.setFilterMode(Qt.MatchContains)
+		self.lineEdit.setCompleter(completer)
+		self.lineEdit1.setCompleter(completer)
+		
+	def paintEvent(self, event):		
+		painter = QPainter(self)
+		pixmap = QPixmap("./data/images/search.png")
+		painter.drawPixmap(self.rect(), pixmap)
+		
+	def replace_id(self):
+		df = pd.read_csv(self.fname)
+		df['UserId'] = df['UserId'].replace(self.lineEdit.text(), self.lineEdit1.text())
+		print('replace: ' + self.lineEdit.text() + ' --> ' +  self.lineEdit1.text())
+		df.to_csv(self.fname, index=False)
+		self.fname = ''
+
 class NewCsvDialog(QDialog):
 	def __init__(self):
 		super().__init__()
@@ -1626,8 +1772,74 @@ class NewCsvDialog(QDialog):
 			print('file Duplicate! Please change a file name.')
 		else:
 			shutil.copy(src_file, dst_folder)
-					
+				
+class DeleteDialog(QDialog):
+	def __init__(self):
+		super().__init__()
+		self.fname = ''
+		window.signal_filename.connect(self.get_file_name)
+		self.initUI()
 		
+	def initUI(self):
+		self.resize(600, 540)  
+		self.setWindowTitle('删除数据')
+		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
+		
+	def get_file_name(self, file_path):
+		print(file_path)
+		self.fname = file_path
+		
+		df = pd.read_csv(self.fname)
+		df_length = len(df)
+		
+		self.model = QStandardItemModel()
+		self.model.setHorizontalHeaderLabels(['', 'ID', '日期', '我方', '', '', '', '', '', '模式', '敌方', '', '', '', '', '', '结果'])
+		for row in range(df_length):
+			for column in range(1,17):
+				item = QStandardItem(df.iloc[row,column-1])
+				self.model.setItem(row, column, item)
+				
+		self.tableView = QTableView()
+		self.tableView.setShowGrid(False)
+		self.tableView.setModel(self.model)
+		self.tableView.setStyleSheet("background-color:transparent")
+		self.tableView.scrollToBottom()
+		header1 = self.tableView.horizontalHeader()
+		header1.setStyleSheet("::section{background-color: #87CEFA;}")
+		header2 = self.tableView.verticalHeader()
+		header2.setStyleSheet("::section{background-color: #87CEFA;}")
+		
+		for row in range(df_length):
+			btn = QPushButton('删除')
+			btn.setProperty('row', row)
+			btn.setProperty('column', 0)
+			btn.clicked.connect(self.on_button_clicked)
+			index = self.model.index(row, 0, QModelIndex())
+			self.tableView.setIndexWidget(index, btn)	
+			
+		layout = QHBoxLayout(self)
+		layout.addWidget(self.tableView)
+		self.setLayout(layout)
+		self.show()
+		
+	def on_button_clicked(self):
+		sender = self.sender()
+		row = sender.property('row')
+		column = sender.property('column')
+		index = self.model.index(row, column, QModelIndex())
+		sender.setEnabled(False)
+		sender.setText('已删除')
+		
+		df = pd.read_csv(self.fname)
+		print('Delete: ')
+		print(df.iloc[row])	
+		df.drop([row],inplace=True)
+		df.to_csv(self.fname,index=False,encoding="utf-8")
+		
+	def paintEvent(self, event):		
+		painter = QPainter(self)
+		pixmap = QPixmap("./data/images/delete.png")
+		painter.drawPixmap(self.rect(), pixmap)
 		
 class NoCsvOpenDialog(QDialog):
 	def __init__(self):
@@ -1660,7 +1872,6 @@ class NoCsvOpenDialog(QDialog):
 		pixmap = QPixmap("./data/images/Nocsv.png")
 		painter.drawPixmap(self.rect(), pixmap)
 		
-    
 class AboutDialog(QDialog):
 	def __init__(self):
 		super().__init__()
@@ -1672,7 +1883,7 @@ class AboutDialog(QDialog):
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
 
 		self.label1 = QLabel()
-		self.label1.setText("本软件遵循GPL开源协议\n开发作者：苦艾煎茶")
+		self.label1.setText("本软件遵循GPL开源协议\n开发作者：苦艾煎茶\n问题反馈群945558059")
 		self.label1.setAlignment(Qt.AlignLeft)
 		self.label1.setStyleSheet("font-weight:bold;font-size:20px")
 		
@@ -1726,8 +1937,8 @@ class AboutDialog(QDialog):
 	
 if __name__ == "__main__":
 	app = QApplication(sys.argv)
-	apply_stylesheet(app, theme= url+'/qt_material/themes/light_cyan_501.xml') 
-	app.setWindowIcon(QIcon(url+"/data/images/icon.ico"))
+	apply_stylesheet(app, theme= './data/light_cyan_501.xml') 
+	app.setWindowIcon(QIcon("./data/images/icon.ico"))
 	app.setAttribute(Qt.AA_UseHighDpiPixmaps)
 	window = MainWindow()
 	sys.exit(app.exec())
