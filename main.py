@@ -8,6 +8,8 @@ import csv
 import shutil
 import configparser
 import subprocess
+import requests
+import webbrowser
 from string import punctuation
 from paddleocr import PPStructure
 from paddleocr import PaddleOCR, draw_ocr
@@ -24,12 +26,13 @@ from qt_material import apply_stylesheet
 
 
 url = os.path.dirname(os.path.abspath(__file__))
+web_url = 'http://124.223.5.69:8181'
 os.environ["QT_FONT_DPI"] = "96"
 
 widgets = None
 
 class MainWindow(QWidget):
-	signal_setbattlelist = Signal(list,str)
+	signal_setbattlelist = Signal(list,str,str)
 	signal_filename = Signal(str)
     
 	def __init__(self):
@@ -45,10 +48,9 @@ class MainWindow(QWidget):
 		print(self.last_filepath)
 		self.initUI()
 
-
 	def initUI(self):
 		self.resize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.3.2')
+		self.setWindowTitle('普拉娜的笔记本 v1.3.3')
 		#self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.setAcceptDrops(True)			
 		
@@ -63,6 +65,7 @@ class MainWindow(QWidget):
 		self.btnOutput = QPushButton('导出为新记录表',self)
 		self.btnNew = QPushButton('新建记录表',self)
 		self.btnData = QPushButton('数据分析',self)
+		self.btnUpload = QPushButton('上传到网站',self)
 		self.content = QTextEdit()
 		self.btnHelp = QPushButton('使用帮助',self)
 		self.btnSC = QRadioButton("简体中文")
@@ -91,18 +94,18 @@ class MainWindow(QWidget):
 		RBLayout.addWidget(self.btnTC)
 		RBLayout.addWidget(self.btnJP)
 		
-		grid.addWidget(self.content,1,2,9,2)
-		grid.addLayout(TopLayout,10,2,1,2)
+		grid.addWidget(self.content,1,2,10,2)
+		grid.addLayout(TopLayout,11,2,1,2)
 		grid.addWidget(self.btnLoad,2,1,1,1)
 		grid.addWidget(self.btnSave,3,1,1,1)
 		grid.addWidget(self.btnMSave,4,1,1,1)
 		grid.addWidget(self.btnSearch,1,1,1,1)		
 		grid.addWidget(self.btnNew,5,1,1,1)
 		grid.addWidget(self.btnData,6,1,1,1)
-		grid.addLayout(RBLayout,8,1,1,1)
-		grid.addWidget(self.btnHelp,9,1,1,1)
-		grid.addWidget(self.btnAbout,10,1,1,1)
-		
+		grid.addWidget(self.btnUpload,7,1,1,1)
+		grid.addLayout(RBLayout,9,1,1,1)
+		grid.addWidget(self.btnHelp,10,1,1,1)
+		grid.addWidget(self.btnAbout,11,1,1,1)	
 		
 		self.btnLoad.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnSave.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
@@ -114,6 +117,7 @@ class MainWindow(QWidget):
 		self.btnAbout.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnNew.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnData.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnUpload.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnHelp.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.content.setStyleSheet("background-color : rgba(255, 255, 255, 50)")	
 		self.btnSC.setIcon(QIcon("QRadioButton::indicator:unchecked {border-image: url(./data/icon/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}"))
@@ -130,6 +134,7 @@ class MainWindow(QWidget):
 		self.btnDelete.clicked.connect(self.delete_record)
 		self.btnOutput.clicked.connect(self.output_record)
 		self.btnData.clicked.connect(self.data_dashboard)
+		self.btnUpload.clicked.connect(self.upload_table)
 		self.btnNew.clicked.connect(self.new_table)
 		self.btnSC.toggled.connect(self.SC_select)
 		self.btnTC.toggled.connect(self.TC_select)
@@ -201,6 +206,9 @@ class MainWindow(QWidget):
 			self.ocr_sc(file_path, img_path)
 		elif self.server_la == 'TC':
 			self.ocr_tc(file_path, img_path)
+		elif self.server_la == 'JP':
+			self.ocr_jp(file_path, img_path)
+		self.refresh_table(event)
 		
 	def addmanually_btnrecord(self, event):
 		if self.fname == '':
@@ -213,11 +221,12 @@ class MainWindow(QWidget):
 				print("invaild csv path!")
 			print('record: ' + file_path)
 			battle_list = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
-			
+			method = 'manual'
 			confirm_dialog = ConfirmDialog()
-			self.signal_setbattlelist.emit(battle_list,file_path)
+			self.signal_setbattlelist.emit(battle_list,file_path,method)
 			if confirm_dialog.exec() == QDialog.Accepted:
 				pass
+			self.refresh_table(event)
 	
 	def add_btnrecord(self, event):
 		if self.fname == '':
@@ -248,6 +257,7 @@ class MainWindow(QWidget):
 				self.ocr_tc(file_path, img_path)
 			elif self.server_la == 'JP':
 				self.ocr_jp(file_path, img_path)
+			self.refresh_table(event)
 				
 	def ocr_jp(self, file_path, img_path):
 		print('record: ' + file_path)
@@ -514,9 +524,10 @@ class MainWindow(QWidget):
 			print(format)
 			
 			battle_list = [new_res_u, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format]
+			method = 'auto'
 			print(battle_list)
 			confirm_dialog = ConfirmDialog()
-			self.signal_setbattlelist.emit(battle_list,file_path)
+			self.signal_setbattlelist.emit(battle_list,file_path,method)
 			if confirm_dialog.exec() == QDialog.Accepted:
 				pass
 		
@@ -753,8 +764,9 @@ class MainWindow(QWidget):
 						
 			battle_list = [new_res6, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format]
 			print(battle_list)
+			method = 'auto'
 			confirm_dialog = ConfirmDialog()
-			self.signal_setbattlelist.emit(battle_list,file_path)
+			self.signal_setbattlelist.emit(battle_list,file_path,method)
 			if confirm_dialog.exec() == QDialog.Accepted:
 				pass
 			
@@ -984,9 +996,9 @@ class MainWindow(QWidget):
 			print(format)
 						
 			battle_list = [new_res6, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format]
-			
+			method = 'auto'
 			confirm_dialog = ConfirmDialog()
-			self.signal_setbattlelist.emit(battle_list,file_path)
+			self.signal_setbattlelist.emit(battle_list,file_path,method)
 			if confirm_dialog.exec() == QDialog.Accepted:
 				pass
 			
@@ -1045,7 +1057,18 @@ class MainWindow(QWidget):
 			)
 			self.content.append(html_data)
 			self.content.append('\n\n')
-			
+		
+	def upload_table(self, event):
+		fname_r, fpath= QFileDialog.getOpenFileName(self, '选择csv记录', './table', '*.csv')
+		if fname_r != '':
+			data = {'file': open(fname_r, 'rb')}
+			rr = requests.post(web_url + '//upload', files=data)
+			print(rr.status_code)
+			print(rr.text)
+			webbrowser.open(web_url)
+		else:
+			print('No file was seclected!')
+		
 	def read_csv(self, event):
 		fname_r, fpath= QFileDialog.getOpenFileName(self, '选择csv记录', './table', '*.csv')
 		if fname_r == '' :
@@ -1185,7 +1208,7 @@ class MainWindow(QWidget):
 			for stuid in stuid_list0:
 				f_printlist.append(' ')
 				f_printlist.append(stuid)
-				stuid = self.sc_to_code(stuid)
+				stuid = self.nickname_to_code(stuid)
 				f_namelist.append(stuid)
 			try:
 				stuid_list0 = list(filter('', stuid_list0))
@@ -1196,7 +1219,7 @@ class MainWindow(QWidget):
 			for stuid in stuid_list1:
 				e_printlist.append(' ')
 				e_printlist.append(stuid)
-				stuid = self.sc_to_code(stuid)
+				stuid = self.nickname_to_code(stuid)
 				e_namelist.append(stuid)
 			try:
 				stuid_list1 = list(filter('', stuid_list1))
@@ -1294,6 +1317,14 @@ class MainWindow(QWidget):
 		stud_dict = pd.read_json('./data/studstr_sc2code.json', typ='series')
 		return stud_dict[stud]
 		
+	def nickname_to_code(self,stud):
+		stud_dict = pd.read_json('./data/studstr_nickname2code.json', typ='series')
+		try:
+			stud_name = stud_dict[stud]
+		except KeyError:
+			stud_name = ''
+		return stud_name
+	
 	def scocr_to_sc(self,stud):
 		stud_dict = pd.read_json('./data/studstr_scocr2sc.json', typ='series')
 		try:
@@ -1351,6 +1382,7 @@ class ConfirmDialog(QDialog):
 		super().__init__()
 		self.initUI()
 		self.file_name = ''
+		self.method = ''
 		window.signal_setbattlelist.connect(self.get_battlelist)
 		
 		
@@ -1360,9 +1392,10 @@ class ConfirmDialog(QDialog):
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
 		self.setWindowFlags(Qt.WindowStaysOnTopHint)
 		
-		stud_dict = pd.read_json('./data/studstr_sc2code.json', typ='series')
+		stud_dict = pd.read_json('./data/studstr_nickname2code.json', typ='series')
 		completer_words = list(stud_dict.keys())
 		completer = QCompleter(completer_words)
+		completer.setFilterMode(Qt.MatchContains)
 		
 		self.btnOk = QPushButton('OK',self)
 
@@ -1498,7 +1531,7 @@ class ConfirmDialog(QDialog):
 		
 		self.show()
 		
-	def get_battlelist(self, battle_list, file_name):
+	def get_battlelist(self, battle_list, file_name, method):
 		self.lineEdit_user.setText(battle_list[0])
 		self.lineEdit_e1.setText(battle_list[1])
 		self.lineEdit_e2.setText(battle_list[2])
@@ -1515,38 +1548,57 @@ class ConfirmDialog(QDialog):
 		self.ComboBox_res.setCurrentText(battle_list[13])
 		self.ComboBox_format.setCurrentText(battle_list[14])
 		self.file_path = file_name
+		self.method = method
 		
-	def sc_to_code(self,stud):
-		if stud != '':
-			stud_dict = pd.read_json('./data/studstr_sc2code.json', typ='series')
-			return stud_dict[stud]
+	def sc_to_code(self, stud, method):
+		if method != 'manual':
+			if stud != '':
+				stud_dict = pd.read_json('./data/studstr_sc2code.json', typ='series')
+				return stud_dict[stud]
+			else:
+				return '1NoData'
 		else:
-			return '1NoData'
+			if stud != '':
+				stud_dict = pd.read_json('./data/studstr_nickname2code.json', typ='series')
+				return stud_dict[stud]
+			else:
+				return '1NoData'
 		
 	def insert_table(self, event):
 		print('insert: ')
-		userId = self.lineEdit_user.text()
-		result = self.ComboBox_res.currentText()
-		Fatk1 = self.sc_to_code(self.lineEdit_f1.text())
-		Fatk2 = self.sc_to_code(self.lineEdit_f2.text())
-		Fatk3 = self.sc_to_code(self.lineEdit_f3.text())
-		Fatk4 = self.sc_to_code(self.lineEdit_f4.text())
-		Fspl1 = self.sc_to_code(self.lineEdit_f5.text())
-		Fspl2 = self.sc_to_code(self.lineEdit_f6.text())
-		Eatk1 = self.sc_to_code(self.lineEdit_e1.text())
-		Eatk2 = self.sc_to_code(self.lineEdit_e2.text())
-		Eatk3 = self.sc_to_code(self.lineEdit_e3.text())
-		Eatk4 = self.sc_to_code(self.lineEdit_e4.text())
-		Espl1 = self.sc_to_code(self.lineEdit_e5.text())
-		Espl2 = self.sc_to_code(self.lineEdit_e6.text())
-		formation = self.ComboBox_format.currentText()
+		if self.lineEdit_user.text() != '':
+			userId = self.lineEdit_user.text()
+		else:
+			userId = 'NoData'
+			
+		if self.ComboBox_res.currentText() != '':
+			result = self.ComboBox_res.currentText()
+		else:
+			result = '胜利'
+		
+		Fatk1 = self.sc_to_code(self.lineEdit_f1.text(), self.method)
+		Fatk2 = self.sc_to_code(self.lineEdit_f2.text(), self.method)
+		Fatk3 = self.sc_to_code(self.lineEdit_f3.text(), self.method)
+		Fatk4 = self.sc_to_code(self.lineEdit_f4.text(), self.method)
+		Fspl1 = self.sc_to_code(self.lineEdit_f5.text(), self.method)
+		Fspl2 = self.sc_to_code(self.lineEdit_f6.text(), self.method)
+		Eatk1 = self.sc_to_code(self.lineEdit_e1.text(), self.method)
+		Eatk2 = self.sc_to_code(self.lineEdit_e2.text(), self.method)
+		Eatk3 = self.sc_to_code(self.lineEdit_e3.text(), self.method)
+		Eatk4 = self.sc_to_code(self.lineEdit_e4.text(), self.method)
+		Espl1 = self.sc_to_code(self.lineEdit_e5.text(), self.method)
+		Espl2 = self.sc_to_code(self.lineEdit_e6.text(), self.method)
+		
+		if self.ComboBox_format.currentText() != '':
+			formation = self.ComboBox_format.currentText()
+		else:
+			formation = '进攻'
 		
 		with open(self.file_path, "a", encoding="utf-8", newline="") as f:
 			wf = csv.writer(f)
 			new_data = [userId,str(datetime.date.today()),Fatk1,Fatk2,Fatk3,Fatk4,Fspl1,Fspl2,formation,Eatk1,Eatk2,Eatk3,Eatk4,Espl1,Espl2,result]
 			wf.writerow(new_data)
 			f.close()
-	
 
 	def paintEvent(self, event):		
 		painter = QPainter(self)
@@ -1604,7 +1656,7 @@ class DashboardDialog(QDialog):
 		
 	def get_file_name(self, file_path):
 		df = pd.read_csv(file_path)		
-		stud_dict = pd.read_json('./data/studstr_sc2code.json', typ='series')
+		stud_dict = pd.read_json('./data/studstr_nickname2code.json', typ='series')
 		completer_words = list(stud_dict.keys())
 		completer = QCompleter(completer_words)
 		completer.setFilterMode(Qt.MatchContains)
