@@ -268,7 +268,7 @@ class MainWindow(QWidget):
 			print("invaild csv path!")
 		else:
 			ocr = PaddleOCR(use_angle_cls=True, lang="japan", show_log=False)
-			img = cv2.imread(img_path)
+			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
 			cv2.rectangle(img, (1800,790),(1000,870),(216,225,256), -1)
 			#cv2.rectangle(img, (140,790),(810,870),(246,247,247), -1)
 			cv2.rectangle(img, (1480,250),(1560,300),(216,225,256), -1)
@@ -542,7 +542,7 @@ class MainWindow(QWidget):
 			table_engine = PPStructure(show_log=False, table=True, image_orientation=False,)
 			print("ocr is running.")
 						
-			img = cv2.imread(img_path)
+			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
 			cv2.rectangle(img, (1800,790),(1000,870),(216,225,256), -1)
 			cv2.rectangle(img, (140,790),(810,870),(246,247,247), -1)
 			cv2.rectangle(img, (1480,250),(1560,300),(216,225,256), -1)
@@ -781,7 +781,7 @@ class MainWindow(QWidget):
 			table_engine = PPStructure(show_log=False, table=True, image_orientation=False,)
 			print("ocr is running.")
 						
-			img = cv2.imread(img_path)
+			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
 			cv2.rectangle(img, (1800,790),(1000,870),(216,225,256), -1)
 			cv2.rectangle(img, (140,790),(810,870),(246,247,247), -1)
 
