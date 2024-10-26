@@ -61,6 +61,7 @@
 "梓泳装":"Azusa(SS)",
 "鹤城泳装":"Tsurugi(SS)",
 "白子骑行":"Shiroko(CC)",
+"纱绫便服":"Saya(CL)",
 "桐乃":"Kirino",
 "瞬小":"Shun(SM)",
 "泉泳装":"Izumi(SS)",
@@ -178,7 +179,6 @@
 "佳代子礼服":"Kayoko(DS)",
 "爱露礼服":"Aru(DS)",
 "明里正月":"Akari(NY)",
-"春明里":"Akari(NY)",
 "海香":"Umika",
 "和纱乐队":"Kazusa(BD)",
 "爱理乐队":"Airi(BD)",
@@ -199,5 +199,8 @@
 "巴旗袍":"Tomoe(QP)",
 "真里奈旗袍":"Marina(QP)",
 "妃咲":"kisaki",
-"丽情":"Reijo"
+"丽情":"Reijo",
+"美祢偶像":"Mine(ID)",
+"樱子偶像":"Sakurako(ID)",
+"玛丽偶像":"Mari(ID)"
 }

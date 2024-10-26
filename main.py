@@ -33,6 +33,7 @@ widgets = None
 class MainWindow(QWidget):
 	signal_setbattlelist = Signal(list,str,str)
 	signal_filename = Signal(str)
+	signal_bulklog = Signal(list)
     
 	def __init__(self):
 		super().__init__()
@@ -49,13 +50,14 @@ class MainWindow(QWidget):
 
 	def initUI(self):
 		self.resize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.4.0_Beta')
+		self.setWindowTitle('普拉娜的笔记本 v1.4.1')
 		#self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.setAcceptDrops(True)			
 		
 		self.btnLoad = QPushButton('查看记录',self)
 		self.btnSave = QPushButton('保存记录',self)
 		self.btnMSave = QPushButton('手动保存记录',self)
+		self.btnBulkSave = QPushButton('批量保存记录',self)
 		self.btnSearch = QPushButton('查询用户历史阵容',self)
 		self.btnAbout = QPushButton('关于',self)
 		self.btnRefresh = QPushButton('刷新记录',self)
@@ -96,6 +98,10 @@ class MainWindow(QWidget):
 		MidLayout = QHBoxLayout()
 		MidLayout.addWidget(self.btnQuery)
 		MidLayout.addWidget(self.btnData)
+		
+		MidLayout1 = QHBoxLayout()
+		MidLayout1.addWidget(self.btnMSave)
+		MidLayout1.addWidget(self.btnBulkSave)
 	
 		RBLayout = QHBoxLayout()
 		RBLayout.addWidget(self.btnSC)
@@ -106,7 +112,7 @@ class MainWindow(QWidget):
 		grid.addLayout(TopLayout,11,2,1,2)
 		grid.addWidget(self.btnLoad,2,1,1,1)
 		grid.addWidget(self.btnSave,3,1,1,1)
-		grid.addWidget(self.btnMSave,4,1,1,1)
+		grid.addLayout(MidLayout1,4,1,1,1)
 		grid.addWidget(self.btnSearch,1,1,1,1)		
 		grid.addWidget(self.btnNew,5,1,1,1)
 		grid.addLayout(MidLayout,6,1,1,1)
@@ -118,6 +124,7 @@ class MainWindow(QWidget):
 		self.btnLoad.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnSave.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnMSave.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnBulkSave.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnRefresh.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnReplaceid.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnDelete.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
@@ -136,6 +143,7 @@ class MainWindow(QWidget):
 		self.btnLoad.clicked.connect(self.read_csv)
 		self.btnSearch.clicked.connect(self.user_search)
 		self.btnSave.clicked.connect(self.add_btnrecord)
+		self.btnBulkSave.clicked.connect(self.addinbulk_btnrecord)
 		self.btnMSave.clicked.connect(self.addmanually_btnrecord)
 		self.btnAbout.clicked.connect(self.show_about)
 		self.btnRefresh.clicked.connect(self.refresh_table)
@@ -212,12 +220,13 @@ class MainWindow(QWidget):
 		img_path = self.picname
 		file_path = str(self.fname)	
 		self.picname = ''
+		isBulk = False
 		if self.server_la == 'SC':
-			self.ocr_sc(file_path, img_path)
+			self.ocr_sc(file_path, img_path, isBulk)
 		elif self.server_la == 'TC':
-			self.ocr_tc(file_path, img_path)
+			self.ocr_tc(file_path, img_path, isBulk)
 		elif self.server_la == 'JP':
-			self.ocr_jp(file_path, img_path)
+			self.ocr_jp(file_path, img_path, isBulk)
 		self.refresh_table(event)
 		
 	def addmanually_btnrecord(self, event):
@@ -245,9 +254,9 @@ class MainWindow(QWidget):
 				pass
 		else:
 			if self.last_filepath == '':
-				img_name = QFileDialog.getOpenFileName(self, '选择截图（不支持中文路径）', '.', '*.png')
+				img_name = QFileDialog.getOpenFileName(self, '选择截图', '.', '*.png')
 			else:
-				img_name = QFileDialog.getOpenFileName(self, '选择截图（不支持中文路径）', self.last_filepath, '*.png')
+				img_name = QFileDialog.getOpenFileName(self, '选择截图', self.last_filepath, '*.png')
 				
 			img_path = img_name[0]
 			file_path = str(self.fname)
@@ -261,15 +270,61 @@ class MainWindow(QWidget):
 				self.cf.write(configfile)
 			configfile.close()
 			
+			isBulk = False
 			if self.server_la == 'SC':
-				self.ocr_sc(file_path, img_path)
+				self.ocr_sc(file_path, img_path, isBulk)
 			elif self.server_la == 'TC':
-				self.ocr_tc(file_path, img_path)
+				self.ocr_tc(file_path, img_path, isBulk)
 			elif self.server_la == 'JP':
-				self.ocr_jp(file_path, img_path)
+				self.ocr_jp(file_path, img_path, isBulk)
 			self.refresh_table(event)
 				
-	def ocr_jp(self, file_path, img_path):
+	def addinbulk_btnrecord(self, event):
+		if self.fname == '':
+			the_dialog = NoCsvOpenDialog()
+			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+				pass	
+		else:
+			if self.last_filepath == '':
+				img_names = QFileDialog.getOpenFileNames(self, '选择截图', '.', '*.png')
+			else:
+				img_names = QFileDialog.getOpenFileNames(self, '选择截图', self.last_filepath, '*.png')
+			print(img_names)
+			file_path = str(self.fname)
+			img_names = img_names[0]
+			img_names.sort()
+			logs = []
+			
+			for img_path in img_names:
+				try:
+					print(img_path)
+					isBulk = True
+					if self.server_la == 'SC':
+						self.ocr_sc(file_path, img_path, isBulk)
+					elif self.server_la == 'TC':
+						self.ocr_tc(file_path, img_path, isBulk)
+					elif self.server_la == 'JP':
+						self.ocr_jp(file_path, img_path, isBulk)
+				except:
+					logs.append(img_path)
+					
+			self.refresh_table(event)
+			if logs == []:
+				print('Done!')
+				bulk_dialog = BulkOKDialog()
+				if bulk_dialog.exec() == QDialog.Accepted:
+					pass
+			else:
+				print('')
+				print('============= WARNING =============')
+				print('The following screenshot analysis failed:')
+				print(logs)	
+				bulk_dialog = BulkLogDialog()
+				self.signal_bulklog.emit(logs)
+				if bulk_dialog.exec() == QDialog.Accepted:
+					pass
+				
+	def ocr_jp(self, file_path, img_path, isBulk):
 		print('record: ' + file_path)
 		print('img: ' + img_path)
 		if(img_path == ''):
@@ -533,15 +588,19 @@ class MainWindow(QWidget):
 				format = "防守"
 			print(format)
 			
-			battle_list = [new_res_u, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format]
-			method = 'auto'
+			battle_list = [new_res_u, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format, img_path]		
 			print(battle_list)
-			confirm_dialog = ConfirmDialog()
-			self.signal_setbattlelist.emit(battle_list,file_path,method)
-			if confirm_dialog.exec() == QDialog.Accepted:
-				pass
+			
+			if isBulk:
+				self.insert_table(battle_list)
+			else:
+				method = 'auto'
+				confirm_dialog = ConfirmDialog()
+				self.signal_setbattlelist.emit(battle_list,file_path,method)
+				if confirm_dialog.exec() == QDialog.Accepted:
+					pass
 		
-	def ocr_tc(self, file_path, img_path):
+	def ocr_tc(self, file_path, img_path, isBulk):
 		print('record: ' + file_path)
 		print('img: ' + img_path)
 		if(img_path == ''):
@@ -772,15 +831,19 @@ class MainWindow(QWidget):
 			print(format)		
 			print(battle_res)		
 						
-			battle_list = [new_res6, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format]
+			battle_list = [new_res6, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format, img_path]
 			print(battle_list)
-			method = 'auto'
-			confirm_dialog = ConfirmDialog()
-			self.signal_setbattlelist.emit(battle_list,file_path,method)
-			if confirm_dialog.exec() == QDialog.Accepted:
-				pass
 			
-	def ocr_sc(self, file_path, img_path):
+			if isBulk:
+				self.insert_table(battle_list)
+			else:
+				method = 'auto'
+				confirm_dialog = ConfirmDialog()
+				self.signal_setbattlelist.emit(battle_list,file_path,method)
+				if confirm_dialog.exec() == QDialog.Accepted:
+					pass
+				
+	def ocr_sc(self, file_path, img_path, isBulk):
 		print('record: ' + file_path)
 		print('img: ' + img_path)
 		if(img_path == ''):
@@ -1006,12 +1069,16 @@ class MainWindow(QWidget):
 				format = "防守"
 			print(format)
 						
-			battle_list = [new_res6, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format]
-			method = 'auto'
-			confirm_dialog = ConfirmDialog()
-			self.signal_setbattlelist.emit(battle_list,file_path,method)
-			if confirm_dialog.exec() == QDialog.Accepted:
-				pass
+			battle_list = [new_res6, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format, img_path]
+		
+			if isBulk:
+				self.insert_table(battle_list)
+			else:
+				method = 'auto'
+				confirm_dialog = ConfirmDialog()
+				self.signal_setbattlelist.emit(battle_list,file_path,method)
+				if confirm_dialog.exec() == QDialog.Accepted:
+					pass
 			
 	def show_csv(self, df_img):	
 		self.content.clear()
@@ -1096,6 +1163,56 @@ class MainWindow(QWidget):
 			)
 			self.content.append(html_data)
 			self.content.append('\n\n')
+		
+	def insert_table(self, battle_list):
+			print('insert: ')
+			if battle_list[0] != '':
+				userId = battle_list[0]
+			else:
+				userId = 'NoData'
+				
+			if battle_list[13] != '':
+				result = battle_list[13]
+			else:
+				result = '胜利'
+			
+			Fatk1 = self.sc_to_code(battle_list[7])
+			Fatk2 = self.sc_to_code(battle_list[8])
+			Fatk3 = self.sc_to_code(battle_list[9])
+			Fatk4 = self.sc_to_code(battle_list[10])
+			Fspl1 = self.sc_to_code(battle_list[11])
+			Fspl2 = self.sc_to_code(battle_list[12])
+			Eatk1 = self.sc_to_code(battle_list[1])
+			Eatk2 = self.sc_to_code(battle_list[2])
+			Eatk3 = self.sc_to_code(battle_list[3])
+			Eatk4 = self.sc_to_code(battle_list[4])
+			Espl1 = self.sc_to_code(battle_list[5])
+			Espl2 = self.sc_to_code(battle_list[6])
+			date = str(datetime.date.today())
+			note = ''
+			title = ''
+			bv = ''
+			check = '0'
+
+			if battle_list[14] != '':
+				formation = battle_list[14]
+			else:
+				formation = '进攻'
+				
+			if battle_list[15] != '':
+				link = battle_list[15]
+				img_str = battle_list[15].split('/')[-1]
+				if img_str[0:4] == 'MuMu':
+					date = img_str[7:11] + '-' + img_str[11:13] + '-' + img_str[13:15]
+			else:
+				link = ''
+			
+			file_path = str(self.fname)
+			with open(file_path, "a", encoding="utf-8", newline="") as f:
+				wf = csv.writer(f)
+				new_data = [userId,date,Fatk1,Fatk2,Fatk3,Fatk4,Fspl1,Fspl2,formation,Eatk1,Eatk2,Eatk3,Eatk4,Espl1,Espl2,result,note,title,link,bv,check]
+				wf.writerow(new_data)
+				f.close()		
 		
 	def upload_table(self, event):
 		fname_r, fpath= QFileDialog.getOpenFileName(self, '选择csv记录', './table', '*.csv')
@@ -1254,7 +1371,7 @@ class MainWindow(QWidget):
 	def get_query(self, query_list):
 		print('get query:')
 		print(query_list)
-		#query_list = [userId, result, formation, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2]
+		#query_list = [userId, result, formation, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, title]
 		userId = query_list[0]
 		result = query_list[1]
 		formation = query_list[2]
@@ -1270,6 +1387,7 @@ class MainWindow(QWidget):
 		Eatk4 = query_list[12]
 		Espl1 = query_list[13]
 		Espl2 = query_list[14]
+		title = query_list[15]
 		
 		df = pd.read_csv(self.fname)
 		if userId != '1NoData':
@@ -1302,6 +1420,8 @@ class MainWindow(QWidget):
 			df = df.query('ESpecial1 == @Espl1 | ESpecial2 == @Espl1')
 		if Espl2 != '1NoData':
 			df = df.query('ESpecial2 == @Espl2 | ESpecial1 == @Espl2')	
+		if title != '':
+			df = df[df['Title'].str.contains(title, na=False)]
 		
 		print(df)
 		self.show_csv(df)
@@ -1695,7 +1815,7 @@ class ConfirmDialog(QDialog):
 		self.show()
 		
 	def get_battlelist(self, battle_list, file_name, method):
-		if len(battle_list) == 15:
+		if len(battle_list) == 16:
 			self.lineEdit_user.setText(battle_list[0])
 			self.lineEdit_e1.setText(battle_list[1])
 			self.lineEdit_e2.setText(battle_list[2])
@@ -1711,6 +1831,7 @@ class ConfirmDialog(QDialog):
 			self.lineEdit_f6.setText(battle_list[12])
 			self.ComboBox_res.setCurrentText(battle_list[13])
 			self.ComboBox_format.setCurrentText(battle_list[14])
+			self.asset_link = battle_list[15]
 		elif len(battle_list) == 19:
 			print('get:')
 			print(battle_list)
@@ -1734,7 +1855,6 @@ class ConfirmDialog(QDialog):
 			self.asset_link = str(battle_list[17])
 			self.lineEdit_bv.setText(str(battle_list[18]))
 
-		
 		self.file_path = file_name
 		self.method = method
 		df = pd.read_csv(self.file_path)
@@ -1865,6 +1985,7 @@ class QueryDialog(QDialog):
 		self.label_e6 = QLabel('敌方支援②', self)
 		self.label_user = QLabel('对手ID', self)	
 		self.label_res = QLabel('对战结果', self)
+		self.label_title = QLabel('标题字符匹配', self)
 		self.label_format = QLabel('编队模式', self)
 		
 		self.lineEdit_f1 = QLineEdit()
@@ -1880,6 +2001,7 @@ class QueryDialog(QDialog):
 		self.lineEdit_e5 = QLineEdit()
 		self.lineEdit_e6 = QLineEdit()
 		self.lineEdit_user = QLineEdit()
+		self.lineEdit_title = QLineEdit()
 		self.ComboBox_res = QComboBox()
 		self.ComboBox_format = QComboBox()
 		
@@ -1939,6 +2061,8 @@ class QueryDialog(QDialog):
 		grid.addWidget(self.lineEdit_user,10,3,1,1)
 		grid.addWidget(self.ComboBox_res,10,4,1,1)
 		
+		grid.addWidget(self.label_title,11,3,1,1)
+		grid.addWidget(self.lineEdit_title,12,3,1,1)
 		grid.addWidget(self.label_format,11,4,1,1)
 		grid.addWidget(self.ComboBox_format,12,4,1,1)
 		
@@ -1958,6 +2082,7 @@ class QueryDialog(QDialog):
 		self.label_e6.setAlignment(Qt.AlignCenter)
 		self.label_user.setAlignment(Qt.AlignCenter)
 		self.label_res.setAlignment(Qt.AlignCenter)
+		self.label_title.setAlignment(Qt.AlignCenter)
 		self.label_format.setAlignment(Qt.AlignCenter)
 		
 		self.label_f1.setStyleSheet("font-weight:bold;font-size:16px")
@@ -1974,6 +2099,7 @@ class QueryDialog(QDialog):
 		self.label_e6.setStyleSheet("font-weight:bold;font-size:16px")
 		self.label_user.setStyleSheet("font-weight:bold;font-size:16px")
 		self.label_res.setStyleSheet("font-weight:bold;font-size:16px")
+		self.label_title.setStyleSheet("font-weight:bold;font-size:16px")
 		self.label_format.setStyleSheet("font-weight:bold;font-size:16px")
 				
 		self.btnOk.setStyleSheet("background-color : rgba(176,196,222,1)")
@@ -2006,13 +2132,14 @@ class QueryDialog(QDialog):
 		Eatk4 = self.sc_to_code(self.lineEdit_e4.text(), self.method)
 		Espl1 = self.sc_to_code(self.lineEdit_e5.text(), self.method)
 		Espl2 = self.sc_to_code(self.lineEdit_e6.text(), self.method)
+		title = self.lineEdit_title.text()
 		
 		if self.ComboBox_format.currentText() != '':
 			formation = self.ComboBox_format.currentText()
 		else:
 			formation = '1NoData'
 			
-		query_list = [userId, result, formation, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2]
+		query_list = [userId, result, formation, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, title]
 		self.signal_setquery.emit(query_list)
 		
 	def get_file_name(self, file_path):
@@ -2323,9 +2450,7 @@ class DeleteDialog(QDialog):
 		layout = QVBoxLayout()
 		layout.addWidget(self.tableView)
 		layout.addLayout(bottom_layout)
-		self.setLayout(layout)	
-		
-		
+		self.setLayout(layout)		
 		
 		for row in range(df_length):
 			btn_d = QPushButton('删除')
@@ -2473,9 +2598,106 @@ class AboutDialog(QDialog):
 		
 	def paintEvent(self, event):		
 		painter = QPainter(self)
-		pixmap = QPixmap("./data/images/About.png")
+		pixmap = QPixmap("./data/images/about.png")
 		painter.drawPixmap(self.rect(), pixmap)
 
+class BulkOKDialog(QDialog):
+	def __init__(self):
+		super().__init__()
+		self.initUI()
+		
+	def initUI(self):
+		self.setWindowTitle('批量导入完成')
+		self.setFixedSize(550, 200)
+		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
+		self.setWindowFlags(Qt.WindowStaysOnTopHint)
+		
+		self.label1 = QLabel()
+		self.label1.setText("导入成功")
+		self.label1.setAlignment(Qt.AlignCenter)
+		self.label1.setStyleSheet("font-weight:bold;font-size:20px")	
+
+		self.btnOk = QPushButton('OK',self)
+		self.btnOk.clicked.connect(self.close)
+		
+		hbox = QHBoxLayout()
+		hbox.addStretch(1)
+		hbox.addWidget(self.btnOk)
+		
+		vbox = QVBoxLayout()
+		vbox.addWidget(self.label1)
+		vbox.addLayout(hbox)
+		
+		self.setLayout(vbox)
+		self.show()
+		
+	def paintEvent(self, event):		
+		painter = QPainter(self)
+		pixmap = QPixmap("./data/images/bulkresult.png")
+		painter.drawPixmap(self.rect(), pixmap)
+		
+class BulkLogDialog(QDialog):
+	def __init__(self):
+		super().__init__()
+		window.signal_bulklog.connect(self.get_logs)
+		self.initUI()
+		self.show()
+		
+	def initUI(self):
+		self.setWindowTitle('批量导入完成')
+		self.setFixedSize(550, 200)
+		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
+		self.setWindowFlags(Qt.WindowStaysOnTopHint)
+		
+		self.label1 = QLabel()
+		self.label1.setText("导入完成，以下图片导入失败：")
+		self.label1.setAlignment(Qt.AlignRight)
+		self.label1.setStyleSheet("font-weight:bold;font-size:20px")
+		
+		self.btnOk = QPushButton('OK',self)
+		self.btnOk.clicked.connect(self.close)
+		
+	def get_logs(self, logs):
+		print('get logs:')
+		print(logs)	
+		self.content = QTextBrowser()
+		self.content.setReadOnly(True)
+		self.content.setOpenLinks(True)
+		self.content.setOpenExternalLinks(True)
+		self.content.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		
+		logs_length = len(logs)
+		for num in range(0,logs_length):
+			template_string_data = '''
+			<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" >
+				<tr>
+					<th>{{ Link }}</th>
+				</tr>
+			'''
+			template_data = Template(template_string_data)		
+			html_data = template_data.render(
+				Link = '<a href="' + str(logs[num]) + '">' + str(logs[num]) +'</a>'
+			)
+			self.content.append(html_data)
+		
+		hbox1 = QHBoxLayout()
+		hbox1.addStretch(0.1)
+		hbox1.addWidget(self.content)
+		hbox = QHBoxLayout()
+		hbox.addStretch(1)
+		hbox.addWidget(self.btnOk)	
+
+		vbox = QVBoxLayout()
+		vbox.addWidget(self.label1)
+		vbox.addLayout(hbox1)
+		vbox.addLayout(hbox)
+		
+		self.setLayout(vbox)
+		
+	def paintEvent(self, event):		
+		painter = QPainter(self)
+		pixmap = QPixmap("./data/images/bulkresult.png")
+		painter.drawPixmap(self.rect(), pixmap)
 	
 if __name__ == "__main__":
 	app = QApplication(sys.argv)
