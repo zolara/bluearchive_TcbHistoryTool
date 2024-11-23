@@ -1,5 +1,11 @@
 
-[![Star History Chart](https://api.star-history.com/svg?repos=zolara/bluearchive_TcbHistoryTool&type=Date)](https://star-history.com/#zolara/bluearchive_TcbHistoryTool&Date)
+<a href="https://star-history.com/#zolara/bluearchive_TcbHistoryTool&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=zolara/bluearchive_TcbHistoryTool&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=zolara/bluearchive_TcbHistoryTool&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=zolara/bluearchive_TcbHistoryTool&type=Date" />
+ </picture>
+</a>
 
 <h2>请给作者点一个star，这是作者持续更新的动力。</h2>
 目前已支持日服和国际服。<br>
