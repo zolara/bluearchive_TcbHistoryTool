@@ -1,3 +1,7 @@
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=zolara/bluearchive_TcbHistoryTool&type=Date)](https://star-history.com/#zolara/bluearchive_TcbHistoryTool&Date)
+
 <h2>请给作者点一个star，这是作者持续更新的动力。</h2>
 目前已支持日服和国际服。<br>
 QQ群 945558059 群头像为小瞬。
