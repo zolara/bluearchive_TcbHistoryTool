@@ -1,4 +1,3 @@
-## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=zolara/bluearchive_TcbHistoryTool&type=Date)](https://star-history.com/#zolara/bluearchive_TcbHistoryTool&Date)
 
