@@ -1,4 +1,4 @@
-<img src="https://count.getloli.com/@zolara?name=zolara&theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto">
+<img src="https://124.223.5.69:3000/theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto">
 
 <a href="https://star-history.com/#zolara/bluearchive_TcbHistoryTool&Date">
  <picture>
