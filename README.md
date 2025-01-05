@@ -1,9 +1,19 @@
+<img src="https://count.getloli.com/@zolara?name=zolara&theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto">
+
+<a href="https://star-history.com/#zolara/bluearchive_TcbHistoryTool&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=zolara/bluearchive_TcbHistoryTool&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=zolara/bluearchive_TcbHistoryTool&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=zolara/bluearchive_TcbHistoryTool&type=Date" />
+ </picture>
+</a>
+
 <h2>请给作者点一个star，这是作者持续更新的动力。</h2>
 目前已支持日服和国际服。<br>
 QQ群 945558059 群头像为小瞬。
 
 <h2>新学生数据包更新方法</h2>
-将压缩包解压，并将其中data文件夹替换原本 ./data 与 ./_internal/data文件。<br />可能后期会推出一键安装的bash脚本。
+将压缩包解压，并将其中data文件夹替换原本软件根目录下data文件。
 
 <h2>通过可执行文件直接运行</h2>
 请在右侧下载release版本，无需下载源码，无需考虑环境。
