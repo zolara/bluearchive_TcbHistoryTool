@@ -13,6 +13,7 @@ from string import punctuation
 from paddleocr import PPStructure
 from paddleocr import PaddleOCR, draw_ocr
 import pandas as pd
+import webbrowser
 from jinja2 import Template
 from tkinter import *
 from tkinter import filedialog, messagebox
@@ -25,7 +26,7 @@ from qt_material import apply_stylesheet
 
 
 url = os.path.dirname(os.path.abspath(__file__))
-web_url = 'http://124.223.5.69:8181'
+web_url = 'http://124.223.5.69:80'
 os.environ["QT_FONT_DPI"] = "96"
 
 widgets = None
@@ -50,7 +51,7 @@ class MainWindow(QWidget):
 
 	def initUI(self):
 		self.resize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.4.1')
+		self.setWindowTitle('普拉娜的笔记本 v1.4.2')
 		#self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.setAcceptDrops(True)			
 		
@@ -295,34 +296,37 @@ class MainWindow(QWidget):
 			img_names.sort()
 			logs = []
 			
-			for img_path in img_names:
-				try:
-					print(img_path)
-					isBulk = True
-					if self.server_la == 'SC':
-						self.ocr_sc(file_path, img_path, isBulk)
-					elif self.server_la == 'TC':
-						self.ocr_tc(file_path, img_path, isBulk)
-					elif self.server_la == 'JP':
-						self.ocr_jp(file_path, img_path, isBulk)
-				except:
-					logs.append(img_path)
-					
-			self.refresh_table(event)
-			if logs == []:
-				print('Done!')
-				bulk_dialog = BulkOKDialog()
-				if bulk_dialog.exec() == QDialog.Accepted:
-					pass
+			if img_names == []:
+				print('No pics!')
 			else:
-				print('')
-				print('============= WARNING =============')
-				print('The following screenshot analysis failed:')
-				print(logs)	
-				bulk_dialog = BulkLogDialog()
-				self.signal_bulklog.emit(logs)
-				if bulk_dialog.exec() == QDialog.Accepted:
-					pass
+				for img_path in img_names:
+					try:
+						print(img_path)
+						isBulk = True
+						if self.server_la == 'SC':
+							self.ocr_sc(file_path, img_path, isBulk)
+						elif self.server_la == 'TC':
+							self.ocr_tc(file_path, img_path, isBulk)
+						elif self.server_la == 'JP':
+							self.ocr_jp(file_path, img_path, isBulk)
+					except:
+						logs.append(img_path)
+						
+				self.refresh_table(event)
+				if logs == []:
+					print('Done!')
+					bulk_dialog = BulkOKDialog()
+					if bulk_dialog.exec() == QDialog.Accepted:
+						pass
+				else:
+					print('')
+					print('============= WARNING =============')
+					print('The following screenshot analysis failed:')
+					print(logs)	
+					bulk_dialog = BulkLogDialog()
+					self.signal_bulklog.emit(logs)
+					if bulk_dialog.exec() == QDialog.Accepted:
+						pass
 				
 	def ocr_jp(self, file_path, img_path, isBulk):
 		print('record: ' + file_path)
@@ -336,9 +340,10 @@ class MainWindow(QWidget):
 			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
 			cv2.rectangle(img, (1800,790),(1000,870),(216,225,256), -1)
 			#cv2.rectangle(img, (140,790),(810,870),(246,247,247), -1)
-			cv2.rectangle(img, (1480,250),(1560,300),(216,225,256), -1)
+			cv2.rectangle(img, (1480,250),(1570,300),(216,225,256), -1)
 			cv2.rectangle(img, (1480,310),(1830,380),(216,225,256), -1)
-				
+			cv2.rectangle(img, (1320,250),(1480,380),(216,225,256), -1)
+			
 			try:
 				img0 = img[795:920,150:240]
 				res0 = ''
@@ -458,8 +463,9 @@ class MainWindow(QWidget):
 			except IndexError: 
 				new_res_u = ''
 				new_winflag = 'Win'
+			print(new_winflag)
 				
-			if new_winflag == 'Win':
+			if new_winflag[1] == 'i':
 				battle_res = "失败"
 			else:
 				battle_res = "胜利"
@@ -858,7 +864,9 @@ class MainWindow(QWidget):
 			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
 			cv2.rectangle(img, (1800,790),(1000,870),(216,225,256), -1)
 			cv2.rectangle(img, (140,790),(810,870),(246,247,247), -1)
-
+			cv2.rectangle(img, (1480,250),(1590,300),(216,225,256), -1)
+			cv2.rectangle(img, (1480,310),(1830,380),(216,225,256), -1)
+			#cv2.imshow("0", img);
 			
 			img1 = img[870:900,1000:1800]
 			result1 = table_engine(img1)
@@ -950,11 +958,11 @@ class MainWindow(QWidget):
 			
 			print(new_res0+' '+new_res1+' '+new_res2+' '+new_res3+' '+new_res4+' '+new_res5)
 			
-			img2 = img[250:370,1290:1860]
+			img2 = img[230:415,1030:1860]
 			result2 = table_engine(img2)
 
 			try:
-				res6 = str(result2[0]['res'][1]['text'])
+				res6 = str(result2[0]['res'][0]['text'])
 				new_res6 = ''.join(i for i in res6 if i.isalnum())
 			except IndexError: 
 				new_res6 = ''
@@ -1051,19 +1059,19 @@ class MainWindow(QWidget):
 				Fspl1 = my_w_res4
 				Fspl2 = my_w_res5
 			
-			pixel_value = img[300,230].tolist()
-			if pixel_value == [227,229,234]:
-				battle_res = "失败"
-			elif pixel_value[0]>220 and pixel_value[0]<235 and pixel_value[1]>225 and pixel_value[1]<235 and pixel_value[2]>230 and pixel_value[2]<240:
-				battle_res = "失败"
-			else:
+			pixel_value = img[300,220].tolist()
+			if pixel_value == [84,226,254]:
 				battle_res = "胜利"
+			elif pixel_value[0]>75 and pixel_value[0]<95 and pixel_value[1]>215 and pixel_value[1]<235 and pixel_value[2]>245 and pixel_value[2]<255:
+				battle_res = "胜利"
+			else:
+				battle_res = "失败"
 			print(battle_res)	
 
 			pixel_value_format = img[340,100].tolist()
-			if pixel_value_format == [128,94,56]:
+			if pixel_value_format == [122,98,64]:
 				format = "进攻"
-			elif pixel_value_format[0]>120 and pixel_value_format[0]<140 and pixel_value_format[1]>85 and pixel_value_format[1]<105 and pixel_value_format[2]>45 and pixel_value_format[2]<65:
+			elif pixel_value_format[0]>110 and pixel_value_format[0]<130 and pixel_value_format[1]>90 and pixel_value_format[1]<110 and pixel_value_format[2]>55 and pixel_value_format[2]<75:
 				format = "进攻"
 			else:
 				format = "防守"
@@ -1147,7 +1155,7 @@ class MainWindow(QWidget):
 				FAttacker4 = '<img src=' + './data/images/stud/' + df_img.iloc[num,5] + '.png width=80/>',
 				FSpecial1 = '<img src=' + './data/images/stud/' + df_img.iloc[num,6] + '.png width=80/>',
 				FSpecial2 = '<img src=' + './data/images/stud/' + df_img.iloc[num,7] + '.png width=80/>',
-				Formation = '<br><img src=' + './data/images/' + df_img.iloc[num,8] + '.png width=80/>',
+				Formation = '<br><img src=' + './data/images/' + df_img.iloc[num,8] + '.png width=40/>',
 				EAttacker1 = '<img src=' + './data/images/stud/' + df_img.iloc[num,9] + '.png width=80/>',
 				EAttacker2 = '<img src=' + './data/images/stud/' + df_img.iloc[num,10] + '.png width=80/>',
 				EAttacker3 = '<img src=' + './data/images/stud/' + df_img.iloc[num,11] + '.png width=80/>',
@@ -1430,7 +1438,7 @@ class MainWindow(QWidget):
 		new_wr_word = " 胜率：" + winrate
 		self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')
 			
-	def get_stu(self, stuid_list0, stuid_list1):
+	def get_stu(self, stuid_list0, stuid_list1, formation):
 		self.content.clear()
 		f_namelist = []
 		e_namelist = []
@@ -1468,6 +1476,8 @@ class MainWindow(QWidget):
 			except TypeError:
 				print(' ')
 			print(e_namelist)
+			
+		print(formation)
 		
 		if stuid_list0 != []:
 			f_str_print = str(f_printlist)
@@ -1489,6 +1499,9 @@ class MainWindow(QWidget):
 			wr_word1 = wr_word + ' 对阵'
 		
 		df = pd.read_csv(self.fname)
+		if formation != '任意':
+			df = df.query('Formation == @formation')
+		
 		if stuid_list0 != []:
 			f_namelist_length = len(f_namelist) - 1		
 		if stuid_list1 != []:
@@ -1634,8 +1647,7 @@ class ConfirmDialog(QDialog):
 			window.delete_dialog.signal_setbattlelist.connect(self.get_battlelist)
 		except:
 			print('')
-		
-		
+			
 	def initUI(self):
 		self.setFixedSize(600, 640)  
 		self.setWindowTitle('确认数据')
@@ -1889,19 +1901,12 @@ class ConfirmDialog(QDialog):
 			return '1NoData'
 			
 	def sc_to_code(self, stud, method):
-		if method != 'manual':
-			if stud != '':
-				stud_dict = pd.read_json('./data/studstr_sc2code.json', typ='series')
-				return stud_dict[stud]
-			else:
-				return '1NoData'
+		if stud != '':
+			stud_dict = pd.read_json('./data/studstr_nickname2code.json', typ='series')
+			return stud_dict[stud]
 		else:
-			if stud != '':
-				stud_dict = pd.read_json('./data/studstr_nickname2code.json', typ='series')
-				return stud_dict[stud]
-			else:
-				return '1NoData'
-		
+			return '1NoData'
+				
 	def insert_table(self, event):
 		print('insert: ')
 		if self.lineEdit_user.text() != '':
@@ -2169,7 +2174,7 @@ class QueryDialog(QDialog):
 		painter.drawPixmap(self.rect(), pixmap)
 
 class DashboardDialog(QDialog):
-	signal_setstu = Signal(list, list)
+	signal_setstu = Signal(list, list, str)
 	
 	def __init__(self):
 		super().__init__()
@@ -2177,7 +2182,7 @@ class DashboardDialog(QDialog):
 		window.signal_filename.connect(self.get_file_name)
 		
 	def initUI(self):
-		self.setFixedSize(400, 400)  
+		self.setFixedSize(400, 600)  
 		self.setWindowTitle('查询我方学生胜率')
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
 		
@@ -2190,6 +2195,11 @@ class DashboardDialog(QDialog):
 		self.lineEdit3 = QLineEdit(self)
 		self.lineEdit4 = QLineEdit(self)
 		self.lineEdit5 = QLineEdit(self)
+		self.label_format = QLabel('编队模式', self)
+		self.ComboBox_format = QComboBox()
+		self.ComboBox_format.setEditable(True)
+		self.ComboBox_format.addItems(["任意", "进攻", "防守"])
+		self.ComboBox_format.setStyleSheet("QComboBox::down-arrow {image: url(./data/icon/down_arrow.svg);}")	
 		
 		self.btnOk = QPushButton('查询',self)
 		
@@ -2211,6 +2221,8 @@ class DashboardDialog(QDialog):
 		vbox.addLayout(RBLayout0)
 		vbox.addWidget(self.label2)
 		vbox.addLayout(RBLayout1)
+		vbox.addWidget(self.label_format)
+		vbox.addWidget(self.ComboBox_format)
 		vbox.addWidget(self.btnOk)
 		vbox.addStretch(1)
 		self.setLayout(vbox)
@@ -2231,7 +2243,7 @@ class DashboardDialog(QDialog):
 		
 	def paintEvent(self, event):		
 		painter = QPainter(self)
-		pixmap = QPixmap("./data/images/search.png")
+		pixmap = QPixmap("./data/images/dashborad.png")
 		painter.drawPixmap(self.rect(), pixmap)
 				
 	def set_stuid(self):
@@ -2245,7 +2257,13 @@ class DashboardDialog(QDialog):
 		print(stuid_list0)
 		stuid_list1 = [stuid3, stuid4, stuid5]
 		print(stuid_list1)
-		self.signal_setstu.emit(stuid_list0, stuid_list1)
+		
+		if self.ComboBox_format.currentText() != '':
+			formation = self.ComboBox_format.currentText()
+		else:
+			formation = '任意'
+			
+		self.signal_setstu.emit(stuid_list0, stuid_list1, formation)
 			
 class SearchDialog(QDialog):
 	signal_setid = Signal(str)
