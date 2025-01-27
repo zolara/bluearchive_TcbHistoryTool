@@ -1,0 +1,74 @@
+{
+	"cover_color_0b":216,
+	"cover_color_0g":225,
+	"cover_color_0r":256,
+	
+	"cover_color_1b":246,
+	"cover_color_1g":247,
+	"cover_color_1r":247,
+	
+	"cover0_x0":1800,
+	"cover0_y0":790,
+	"cover0_x1":1000,
+	"cover0_y1":870,
+	
+	"cover1_x0":140,
+	"cover1_y0":790,
+	"cover1_x1":810,
+	"cover1_y1":870,
+	
+	"cover2_x0":1480,
+	"cover2_y0":250,
+	"cover2_x1":1590,
+	"cover2_y1":300,
+	
+	"cover3_x0":1480,
+	"cover3_y0":310,
+	"cover3_x1":1830,
+	"cover3_y1":380,
+	
+	"E_box_x0":1000,
+	"E_box_x1":1800,
+	"E_box_y0":870,
+	"E_box_y1":900,
+	
+	"Ecolor2_x":1265,
+	"Ecolor2_y":780,
+	"Ecolor3_x":1380,
+	"Ecolor3_y":780,
+	"Ecolor4_x":1490,
+	"Ecolor4_y":780,
+	"Ecolor5_x":1600,
+	"Ecolor5_y":780,
+	
+	"id_x0":1030,
+	"id_x1":1860,
+	"id_y0":230,
+	"id_y1":415,
+	
+	"F_box_x0":120,
+	"F_box_x1":820,
+	"F_box_y0":870,
+	"F_box_y1":900,
+	
+	"Fcolor2_x":310,
+	"Fcolor2_y":780,
+	"Fcolor3_x":420,
+	"Fcolor3_y":780,
+	"Fcolor4_x":535,
+	"Fcolor4_y":780,
+	"Fcolor5_x":650,
+	"Fcolor5_y":780,
+	
+	"wincolor_x":220,
+	"wincolor_y":300,
+	"wincolor_b":84,
+	"wincolor_g":226,
+	"wincolor_r":254,
+	
+	"formatcolor_x":100,
+	"formatcolor_y":340,
+	"formatcolor_b":122,
+	"formatcolor_g":98,
+	"formatcolor_r":64,
+}
