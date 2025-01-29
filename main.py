@@ -48,7 +48,6 @@ url = os.path.dirname(os.path.abspath(__file__))
 web_url = 'http://plana.ink'
 os.environ["QT_FONT_DPI"] = "96"
 ba_token = "ba-token xx:xx" 
-#token未公开
 
 widgets = None
 
@@ -75,7 +74,7 @@ class MainWindow(QWidget):
 
 	def initUI(self):
 		self.resize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.5.0')
+		self.setWindowTitle('普拉娜的笔记本 v1.5.0 Beta')
 		#self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.setAcceptDrops(True)			
 		
@@ -95,12 +94,13 @@ class MainWindow(QWidget):
 		self.btnUpload = QPushButton('上传对策至什亭之匣',self)
 		self.btnADB = QPushButton('自动化工具（实验性功能）',self)
 		self.btnSts = QPushButton('高胜率统计',self)
-		self.content = QTextBrowser()
+		self.btnAlice = QPushButton('从JSON文件导入记录',self)
 		self.btnHelp = QPushButton('使用帮助',self)
 		self.btnSetting = QPushButton('设置',self)
 		self.btnSC = QRadioButton("简体中文")
 		self.btnTC = QRadioButton("繁体中文")
 		self.btnJP = QRadioButton("日文")
+		self.content = QTextBrowser()
 		
 		self.content.setReadOnly(True)
 		self.content.setOpenLinks(False)
@@ -140,7 +140,7 @@ class MainWindow(QWidget):
 		RBLayout.addWidget(self.btnTC)
 		RBLayout.addWidget(self.btnJP)
 		
-		grid.addWidget(self.content,1,2,12,2)
+		grid.addWidget(self.content,1,2,13,2)
 		grid.addWidget(self.btnLoad,2,1,1,1)
 		grid.addWidget(self.btnSave,3,1,1,1)
 		grid.addLayout(MidLayout1,4,1,1,1)
@@ -150,10 +150,11 @@ class MainWindow(QWidget):
 		grid.addWidget(self.btnUpload,7,1,1,1)
 		grid.addWidget(self.btnADB,8,1,1,1)
 		grid.addWidget(self.btnSts,9,1,1,1)
-		grid.addLayout(RBLayout,11,1,1,1)
-		grid.addLayout(MidLayout2,12,1,1,1)
-		grid.addWidget(self.btnAbout,13,1,1,1)
-		grid.addLayout(TopLayout,13,2,1,2)
+		grid.addWidget(self.btnAlice,10,1,1,1)
+		grid.addLayout(RBLayout,12,1,1,1)
+		grid.addLayout(MidLayout2,13,1,1,1)
+		grid.addWidget(self.btnAbout,14,1,1,1)
+		grid.addLayout(TopLayout,14,2,1,2)
 		
 		self.btnLoad.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnSave.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
@@ -170,6 +171,7 @@ class MainWindow(QWidget):
 		self.btnUpload.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnADB.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnSts.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnAlice.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnHelp.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnSetting.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.content.setStyleSheet("background-color : rgba(255, 255, 255, 50)")	
@@ -198,9 +200,10 @@ class MainWindow(QWidget):
 		self.btnJP.toggled.connect(self.JP_select)
 		self.btnHelp.clicked.connect(self.show_help)
 		self.btnSetting.clicked.connect(self.show_settings)
+		self.btnAlice.clicked.connect(self.show_alice)
 		
 		self.content.append("欢迎回来")
-		self.content.append("请确保本软件路径、截图保存路径等仅存在英文字符哦。")
+		#self.content.append("请确保本软件路径、截图保存路径等仅存在英文字符哦。")
 		self.show()
 		
 	def JP_select(self, event):
@@ -1155,7 +1158,12 @@ class MainWindow(QWidget):
 		arona_query_filename = self.query_filename
 		df_length = len(df_img)
 		
-		for num in range(0,df_length):
+		if df_length > 150:
+			df_head = df_length - 150
+		else:
+			df_head = 0
+		
+		for num in range(df_head, df_length):
 			template_string_data = '''
 		<!doctype html>
 		<html lang="zh-CN">
@@ -1231,8 +1239,8 @@ class MainWindow(QWidget):
 			
 			template_data = Template(template_string_data)
 			html_data = template_data.render(
-				UserId = userid_word,
-				Date = '<br><br>' + str(df_img.iloc[num,1]),				
+				UserId = '<a href="userId--' + str(df_img.iloc[num,0]) + '" sytle="text-decoration: none;">' + userid_word + '</a>',
+				Date = '<br><br>' + str(df_img.iloc[num,1][0:10]),			
 				FAttacker1 = '<img src=' + './data/images/stud/' + df_img.iloc[num,2] + '.png width=80/>',
 				FAttacker2 = '<img src=' + './data/images/stud/' + df_img.iloc[num,3] + '.png width=80/>',
 				FAttacker3 = '<img src=' + './data/images/stud/' + df_img.iloc[num,4] + '.png width=80/>',
@@ -1263,6 +1271,8 @@ class MainWindow(QWidget):
 		list = url.toString().split('--')
 		if list[0] == 'plana':
 			webbrowser.open("http://plana.ink/app_exact_query?attack1="+ list[1] +"&attack2="+ list[2] +"&attack3="+ list[3] +"&attack4="+ list[4] +"&special1=&special2=&filename=" + list[5])
+		elif list[0] == 'userId':
+			self.get_id(list[1])
 		elif list[0] == 'bili':
 			webbrowser.open(list[1])
 		elif list[0] == 'img':
@@ -1719,7 +1729,7 @@ class MainWindow(QWidget):
 		self.show_csv(df_img)
 		self.df_output = df_img.copy()
 		winrate = '{:.2%}'.format(self.cal_winrate(df_img))
-		new_wr_word = ' 胜率：' + winrate
+		new_wr_word = ' 胜率：' + winrate + " （总数：" + str(len(df_img)) + "）"
 		self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')
 	
 	def get_adbscreenshotlists(self, img_names):
@@ -1757,6 +1767,97 @@ class MainWindow(QWidget):
 				if bulk_dialog.exec() == QDialog.Accepted:
 					pass
 	
+	def get_alicejson(self, date, formation, json_path):
+		print("get_json")
+		alice_json = pd.read_json(json_path, typ='series')
+		alice_json = alice_json.reindex(alice_json.index[::-1])
+		
+		df = pd.read_csv(self.fname)
+		timestamp_list = df['Date'].values.tolist()
+
+		for item in alice_json:
+			if time.strptime(item["BattleEndTime"][0:10], '%Y-%m-%d') < time.strptime(date, '%Y-%m-%d'):
+				continue	
+			if item["BattleEndTime"] in timestamp_list:
+				continue
+				
+			if formation == "进攻":
+				if item["type"] == "defend":
+					continue
+			elif formation == "防守":
+				if item["type"] == "attack":
+					continue
+			
+			Attacker_striker_list = ['','','','']
+			Attacker_special_list = ['','']
+			Defender_striker_list = ['','','','']
+			Defender_special_list = ['','']
+
+			for attacker_striker in item["AttackerUserDB"]["TeamSettingDB"]["MainCharacters"]:
+				Attacker_striker_list[attacker_striker["Position"]-1] = attacker_striker["UniqueId"]
+			if item["AttackerUserDB"]["TeamSettingDB"]["SupportCharacters"] != []:
+				for Attacker_special in item["AttackerUserDB"]["TeamSettingDB"]["SupportCharacters"]:
+					Attacker_special_list.insert(0,Attacker_special["UniqueId"])
+				
+			for defender_striker in item["DefenderUserDB"]["TeamSettingDB"]["MainCharacters"]:
+				Defender_striker_list[defender_striker["Position"]-1] = defender_striker["UniqueId"]
+			if item["DefenderUserDB"]["TeamSettingDB"]["SupportCharacters"] != []:
+				for Defender_special in item["DefenderUserDB"]["TeamSettingDB"]["SupportCharacters"]:
+					Defender_special_list.insert(0,Defender_special["UniqueId"])
+			
+			#              0     1     2     3     4     5     6     7       8       9    10     11   12    13    14     15    16    17   18  19  20
+			#new_data = [userId,date,Fatk1,Fatk2,Fatk3,Fatk4,Fspl1,Fspl2,formation,Eatk1,Eatk2,Eatk3,Eatk4,Espl1,Espl2,result,note,title,link,bv,check]
+			battle_list = ['',  '',  '',   '',   '',   '',   '',   '',   '',       '',   '',   '',   '',   '',   '',   '',    '',  '',   '',  '','']
+			
+			
+			battle_list[1] = item["BattleEndTime"]
+			if item["result"] == "win":
+				battle_list[15] = "胜利"
+			else:
+				battle_list[15] = "失败"
+			
+			if item["type"] == "attack":
+				battle_list[0] = item["DefenderUserDB"]["NickName"]
+				battle_list[2] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[0]), 'auto')
+				battle_list[3] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[1]), 'auto')
+				battle_list[4] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[2]), 'auto')
+				battle_list[5] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[3]), 'auto')
+				battle_list[6] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_special_list[0]), 'auto')
+				battle_list[7] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_special_list[1]), 'auto')
+				battle_list[9]  = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[0]), 'auto')
+				battle_list[10] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[1]), 'auto')
+				battle_list[11] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[2]), 'auto')
+				battle_list[12] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[3]), 'auto')
+				battle_list[13] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_special_list[0]), 'auto')
+				battle_list[14] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_special_list[1]), 'auto')
+				battle_list[8] = "进攻"
+			else:
+				battle_list[0] = item["AttackerUserDB"]["NickName"]
+				battle_list[2] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[0]), 'auto')
+				battle_list[3] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[1]), 'auto')
+				battle_list[4] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[2]), 'auto')
+				battle_list[5] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[3]), 'auto')
+				battle_list[6] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_special_list[0]), 'auto')
+				battle_list[7] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_special_list[1]), 'auto')
+				battle_list[9]  = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[0]), 'auto')
+				battle_list[10] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[1]), 'auto')
+				battle_list[11] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[2]), 'auto')
+				battle_list[12] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[3]), 'auto')
+				battle_list[13] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_special_list[0]), 'auto')
+				battle_list[14] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_special_list[1]), 'auto')
+				battle_list[8] = "防守"
+			
+			print('insert: ')
+			print(battle_list)
+			
+			file_path = str(self.fname)
+			with open(file_path, "a", encoding="utf-8", newline="") as f:
+				wf = csv.writer(f)
+				wf.writerow(battle_list)
+				f.close()
+			
+		self.refresh_table()
+	
 	def start_ADB(self, event):
 		if self.fname == '' :
 			the_dialog = NoCsvOpenDialog()
@@ -1785,6 +1886,17 @@ class MainWindow(QWidget):
 		settings_dialog = SettingsDialog()
 		if settings_dialog.exec() == QDialog.Accepted:
 			pass
+			
+	def show_alice(self, event):
+		if self.fname == '' :
+			the_dialog = NoCsvOpenDialog()
+			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+				pass
+		else:
+			alice_dialog = AliceDialog()
+			alice_dialog.signal_setalicelist.connect(self.get_alicejson)
+			if alice_dialog.exec() == QDialog.Accepted:
+				pass
 
 	
 	''' old methods
@@ -2500,8 +2612,7 @@ class SearchDialog(QDialog):
 		super().__init__()
 		self.initUI()
 		window.signal_filename.connect(self.get_file_name)
-		
-		
+			
 	def initUI(self):
 		self.setFixedSize(400, 400)  
 		self.setWindowTitle('查询用户历史阵容')
@@ -2543,8 +2654,7 @@ class ReplaceDialog(QDialog):
 		super().__init__()
 		self.initUI()
 		window.signal_filename.connect(self.get_file_name)
-		
-		
+			
 	def initUI(self):
 		self.setFixedSize(400, 400)  
 		self.setWindowTitle('替换用户ID')
@@ -2595,8 +2705,7 @@ class NewCsvDialog(QDialog):
 	def __init__(self):
 		super().__init__()
 		self.initUI()
-		
-		
+			
 	def initUI(self):
 		self.setFixedSize(400, 400)  
 		self.setWindowTitle('新建一张记录表')
@@ -3012,6 +3121,33 @@ class ADBDialog(QDialog):
 		print(res_shell.stdout)
 		
 	def loop_screenshots(self):
+		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		time.sleep(0.1)
+		subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+		
+		height, width = img1.shape[:2]
+		if height != 1080:
+			print("分辨率非法！")
+			return 0
+		if width != 1920:
+			print("分辨率非法！")
+			return 0
+		
+		pixel_value3 = img1[300,1000].tolist()
+		#if pixel_value1 != [102, 239, 253, 255]:
+		print(pixel_value3)
+		if pixel_value3[0] < 97 or pixel_value3[0] > 107 or pixel_value3[1] < 234 or pixel_value3[1] > 244 or pixel_value3[2] < 248 or pixel_value3[2] > 258:
+			print("未检测出历史记录页")
+			return 0
+			
+		pixel_value4 = img1[200,1000].tolist()
+		#if pixel_value1 != [111, 104, 85, 255]:
+		print(pixel_value4)
+		if pixel_value4[0] < 106 or pixel_value4[0] > 116 or pixel_value4[1] < 99 or pixel_value4[1] > 109 or pixel_value4[2] < 80 or pixel_value4[2] > 90:
+			print("未检测出历史记录页")
+			return 0
+			
 		for i in range(int(self.lineEdit_count.text())):
 			subprocess.run([self.adb_path,"shell","input","tap","1422","388"],encoding="utf-8")
 			time.sleep(1)
@@ -3054,7 +3190,7 @@ class ADBDialog(QDialog):
 		if loop_res == 1:
 			self.save_record()
 		if loop_res == 0:
-			self.content.append("错误")
+			self.content.append("异常终止")
 			return
 
 	def save_record(self):
@@ -3776,6 +3912,74 @@ class SettingsDialog(QDialog):
 		pixmap = QPixmap("./data/images/dashborad.png")
 		painter.drawPixmap(self.rect(), pixmap)
 				
+class AliceDialog(QDialog):
+	signal_setalicelist = Signal(str, str, str)
+
+	def __init__(self):
+		super().__init__()
+		self.initUI()
+		
+	def initUI(self):
+		self.setFixedSize(400, 600)  
+		self.setWindowTitle('从JSON文件导入记录')
+		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
+		
+		self.label_jsonselect = QLabel('JSON文件路径', self)
+		self.lineEdit_jsonselect = QLineEdit(self)
+		self.btn_jsonselect = QPushButton('选择',self)
+		self.label_formation = QLabel('编队模式', self)
+		self.ComboBox_format = QComboBox(self)
+		self.label_date = QLabel('导入起始日期', self)
+		self.dateEdit = QDateEdit()
+		self.btnOk = QPushButton('导入',self)
+		
+		self.lineEdit_jsonselect.setReadOnly(True)
+		self.ComboBox_format.setEditable(True)
+		self.ComboBox_format.addItems(["进攻","防守","任意"])
+		self.ComboBox_format.setStyleSheet("QComboBox::down-arrow {image: url(./data/icon/down_arrow.svg);}")
+		self.dateEdit.setDisplayFormat('yyyy-MM-dd')
+		self.dateEdit.setStyleSheet("QDateEdit::down-arrow {image: url(./data/icon/down_arrow.svg);}")
+		self.dateEdit.setCalendarPopup(True)
+		self.dateEdit.setDate(QDate.currentDate())
+		
+		self.btn_jsonselect.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		
+		vbox = QVBoxLayout()
+		
+		RBLayout0 = QHBoxLayout()
+		RBLayout0.addWidget(self.lineEdit_jsonselect)
+		RBLayout0.addWidget(self.btn_jsonselect)
+		
+		vbox.addWidget(self.label_jsonselect)
+		vbox.addLayout(RBLayout0)
+		vbox.addWidget(self.label_formation)
+		vbox.addWidget(self.ComboBox_format)
+		vbox.addWidget(self.label_date)
+		vbox.addWidget(self.dateEdit)
+		vbox.addWidget(self.btnOk)
+		vbox.addStretch(1)
+		self.setLayout(vbox)
+		
+		self.btn_jsonselect.clicked.connect(self.seclet_JSONpath)
+		self.btnOk.clicked.connect(self.set_alicelist)	
+		self.btnOk.clicked.connect(self.close)		
+		self.show()
+		
+	def seclet_JSONpath(self):
+		JSON_path = QFileDialog.getOpenFileName(self, 'JSON路径选择', '.', '*.json')
+		self.lineEdit_jsonselect.setText(JSON_path[0]) 
+		
+	def set_alicelist(self):
+		date = self.dateEdit.dateTime().toString("yyyy-MM-dd")
+		formation = self.ComboBox_format.currentText()
+		json_path = self.lineEdit_jsonselect.text()
+		self.signal_setalicelist.emit(date, formation, json_path)
+		
+	def paintEvent(self, event):		
+		painter = QPainter(self)
+		pixmap = QPixmap("./data/images/dashborad.png")
+		painter.drawPixmap(self.rect(), pixmap)
+		
 
 if __name__ == "__main__":
 	app = QApplication(sys.argv)
