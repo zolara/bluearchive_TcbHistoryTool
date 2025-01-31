@@ -92,7 +92,8 @@ class MainWindow(QWidget):
 		self.btnData = QPushButton('模糊查询',self)
 		self.btnQuery = QPushButton('精确查询',self)
 		self.btnUpload = QPushButton('上传对策至什亭之匣',self)
-		self.btnADB = QPushButton('自动化工具（实验性功能）',self)
+		self.btnWatcher = QPushButton('截图监听',self)
+		self.btnADB = QPushButton('自动翻表',self)
 		self.btnSts = QPushButton('高胜率统计',self)
 		self.btnAlice = QPushButton('从JSON文件导入记录',self)
 		self.btnHelp = QPushButton('使用帮助',self)
@@ -134,6 +135,10 @@ class MainWindow(QWidget):
 		MidLayout2 = QHBoxLayout()
 		MidLayout2.addWidget(self.btnHelp)
 		MidLayout2.addWidget(self.btnSetting)
+		
+		MidLayout3 = QHBoxLayout()
+		MidLayout3.addWidget(self.btnWatcher)
+		MidLayout3.addWidget(self.btnADB)
 	
 		RBLayout = QHBoxLayout()
 		RBLayout.addWidget(self.btnSC)
@@ -148,7 +153,7 @@ class MainWindow(QWidget):
 		grid.addWidget(self.btnNew,5,1,1,1)
 		grid.addLayout(MidLayout,6,1,1,1)
 		grid.addWidget(self.btnUpload,7,1,1,1)
-		grid.addWidget(self.btnADB,8,1,1,1)
+		grid.addLayout(MidLayout3,8,1,1,1)
 		grid.addWidget(self.btnSts,9,1,1,1)
 		grid.addWidget(self.btnAlice,10,1,1,1)
 		grid.addLayout(RBLayout,12,1,1,1)
@@ -169,6 +174,7 @@ class MainWindow(QWidget):
 		self.btnData.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnQuery.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnUpload.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnWatcher.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnADB.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnSts.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnAlice.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
@@ -192,6 +198,7 @@ class MainWindow(QWidget):
 		self.btnData.clicked.connect(self.data_dashboard)
 		self.btnQuery.clicked.connect(self.precise_query)
 		self.btnUpload.clicked.connect(self.upload_table)
+		self.btnWatcher.clicked.connect(self.start_watch)
 		self.btnADB.clicked.connect(self.start_ADB)
 		self.btnSts.clicked.connect(self.start_Sts)
 		self.btnNew.clicked.connect(self.new_table)
@@ -1766,6 +1773,26 @@ class MainWindow(QWidget):
 				self.signal_bulklog.emit(logs)
 				if bulk_dialog.exec() == QDialog.Accepted:
 					pass
+					
+	def get_watchlist(self, img_names):
+		if img_names == []:
+			print('No pics!')
+		else:
+			file_path = str(self.fname)
+			for img_path in img_names:
+				try:
+					print(img_path)
+					isBulk = True
+					if self.server_la == 'SC':
+						self.ocr_sc(file_path, img_path, isBulk)
+					elif self.server_la == 'TC':
+						self.ocr_tc(file_path, img_path, isBulk)
+					elif self.server_la == 'JP':
+						self.ocr_jp(file_path, img_path, isBulk)
+				except:
+					print("save failed!")
+					
+			self.refresh_table()
 	
 	def get_alicejson(self, date, formation, json_path):
 		print("get_json")
@@ -1774,6 +1801,7 @@ class MainWindow(QWidget):
 		
 		df = pd.read_csv(self.fname)
 		timestamp_list = df['Date'].values.tolist()
+		timestamp_list = list(set(timestamp_list))
 
 		for item in alice_json:
 			if time.strptime(item["BattleEndTime"][0:10], '%Y-%m-%d') < time.strptime(date, '%Y-%m-%d'):
@@ -1857,6 +1885,20 @@ class MainWindow(QWidget):
 				f.close()
 			
 		self.refresh_table()
+	
+	def start_watch(self, event):
+		if self.fname == '' :
+			the_dialog = NoCsvOpenDialog()
+			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+				pass
+		else:
+			watch_dialog = WatcherDialog()
+			watch_dialog.signal_setimgpath.connect(self.get_watchlist)
+			file_path = str(self.fname)
+			print(file_path)
+			self.signal_filename.emit(file_path)
+			if watch_dialog.exec() == QDialog.Accepted:
+				pass
 	
 	def start_ADB(self, event):
 		if self.fname == '' :
@@ -2904,7 +2946,7 @@ class AboutDialog(QDialog):
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
 
 		self.label1 = QLabel()
-		self.label1.setText("本软件遵循GPL开源协议\n开发作者：苦艾煎茶\n问题反馈群945558059")
+		self.label1.setText("本软件遵循GPL开源协议\n开发作者：苦艾煎茶\n问题反馈群：945558059")
 		self.label1.setAlignment(Qt.AlignLeft)
 		self.label1.setStyleSheet("font-weight:bold;font-size:20px")
 		
@@ -2934,8 +2976,8 @@ class AboutDialog(QDialog):
 		self.label6.setScaledContents(True)
 		self.label6.setPixmap(pixmap)
 		
-		self.btnOk = QPushButton('OK',self)
-		self.btnOk.clicked.connect(self.close)
+		self.btnOk = QPushButton('检查更新',self)
+		self.btnOk.clicked.connect(self.show_version)
 
 		grid = QGridLayout()
 		self.setLayout(grid)
@@ -2950,9 +2992,63 @@ class AboutDialog(QDialog):
 		self.setWindowOpacity(0.8)
 		self.show()
 		
+	def show_version(self, event):
+		self.version_dialog = VersionDialog()
+		self.version_dialog.show()	
+		
 	def paintEvent(self, event):		
 		painter = QPainter(self)
 		pixmap = QPixmap("./data/images/about.png")
+		painter.drawPixmap(self.rect(), pixmap)
+
+class VersionDialog(QDialog):
+	def __init__(self):
+		super().__init__()
+		headers = {"Content-Type": "application/json"}
+		post_dict = {}
+		r_plana_version = requests.post(web_url + "/api/v1/appdata_version", json = post_dict, headers = headers)
+		print(r_plana_version.status_code)
+		if r_plana_version.status_code < 400:
+			version_dict = json.loads(s=r_plana_version.text)
+			print(version_dict["data"])
+			self.version_text = "最新应用程序版本：" + version_dict["data"]["app_version"] + "\n最新数据文件版本：" + version_dict["data"]["data_version"]
+		else:
+			self.version_text = "连接远程服务器错误"
+		self.initUI()
+		
+	def initUI(self):
+		self.setWindowTitle('检查新版本')
+		self.setFixedSize(550, 200)
+		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
+		self.setWindowFlags(Qt.WindowStaysOnTopHint)
+		
+		self.label1 = QLabel()
+		self.label1.setText(self.version_text)
+		self.label1.setAlignment(Qt.AlignRight)
+		self.label1.setStyleSheet("font-weight:bold;font-size:20px")
+		self.label2 = QLabel()
+		self.label2.setText("应用程序更新请前往作者github或QQ群中下载\n数据文件更新请运行软件根目录下update脚本")
+		self.label2.setAlignment(Qt.AlignRight)
+		self.label2.setStyleSheet("font-weight:bold;font-size:14px")
+
+		self.btnOk = QPushButton('OK',self)
+		self.btnOk.clicked.connect(self.close)
+		
+		hbox = QHBoxLayout()
+		hbox.addStretch(1)
+		hbox.addWidget(self.btnOk)
+		
+		vbox = QVBoxLayout()
+		vbox.addWidget(self.label1)
+		vbox.addWidget(self.label2)
+		vbox.addLayout(hbox)
+		
+		self.setLayout(vbox)
+		self.show()
+		
+	def paintEvent(self, event):		
+		painter = QPainter(self)
+		pixmap = QPixmap("./data/images/bulkresult.png")
 		painter.drawPixmap(self.rect(), pixmap)
 
 class BulkOKDialog(QDialog):
@@ -3213,11 +3309,78 @@ class ADBDialog(QDialog):
 		pixmap = QPixmap("./data/images/delete.png")
 		painter.drawPixmap(self.rect(), pixmap)
 		
+class WatcherDialog(QDialog):
+	signal_setimgpath = Signal(list)
+
+	def __init__(self):
+		super().__init__()
+		window.signal_filename.connect(self.get_file_name)
+		self.fname = ''
+		self.cf = configparser.ConfigParser()
+		self.cf.read("./conf.ini",encoding='utf-8')
+		self.watcher_path = self.cf.get("filepath","watcher_path")
+		if self.watcher_path != '':
+			self.watcher = QFileSystemWatcher([self.watcher_path])
+			self.watcher.directoryChanged.connect(self.on_directory_changed)
+			self.last_files = set(os.listdir(self.watcher_path))
+		self.initUI()
+		
+	def initUI(self):
+		self.resize(640, 460)  
+		self.setWindowTitle('监听新截图')
+		self.setAcceptDrops(True)
+		
+		self.content = QTextBrowser()
+		
+		grid = QGridLayout()
+		self.setLayout(grid)
+		grid.addWidget(self.content,1,1,1,1)
+		
+		self.content.append("本功能将持续监听指定的截图保存目录，每当新截图出现将尝试导入。请按时清理截图以保证运行效率。\n")
+		self.content.append("当前监听目录：")
+		if self.watcher_path != '':
+			self.content.append(self.watcher_path +"\n")
+			self.content.append("监听中……\n")
+		else:
+			self.content.append("未配置！请在设置中配置后重新打开本功能页。\n")
+			
+		self.show()
+		
+	def on_directory_changed(self, path):
+		current_files = set(os.listdir(path))
+		new_files = current_files - self.last_files
+		for file in new_files:
+			file_path = os.path.join(path, file)
+			if os.path.isfile(file_path) and self.is_image_file(file):
+				print("New pic: " + file_path)
+				self.content.append("监听到新图片")
+				file_path = file_path.replace("\\", "/")
+				self.signal_setimgpath.emit([file_path])
+		self.last_files = set(os.listdir(self.watcher_path))
+				
+	def is_image_file(self, file_name):
+		if file_name.startswith('.'):
+			return False
+		image_extensions = ['.jpg', '.jpeg', '.png']
+		_, ext = os.path.splitext(file_name.lower())
+		return ext in image_extensions
+		
+	def get_file_name(self, file_path):
+		self.fname = file_path
+	
+	def paintEvent(self, event):		
+		painter = QPainter(self)
+		pixmap = QPixmap("./data/images/delete.png")
+		painter.drawPixmap(self.rect(), pixmap)
+		
 class QueryresDialog(QDialog):
 	def __init__(self):
 		super().__init__()
 		self.res_list = []
 		window.signal_aronares.connect(self.get_aronares)
+		self.cf = configparser.ConfigParser()
+		self.cf.read("./conf.ini",encoding='utf-8')
+		self.query_filename = self.cf.get("filepath","query_filename")
 		self.initUI()
 			
 	def initUI(self):
@@ -3242,7 +3405,8 @@ class QueryresDialog(QDialog):
 			print("empty!")
 		else:
 			self.content.clear()
-			self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h1>数据来源：<b><a href="https://arona.icu/queryArena" style="color:black;">什亭之匣</a></b></h1></font><br>')
+			self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h1>数据来源：<b><a href="https://arona.icu/queryArena" style="color:black;">什亭之匣</a></b></h1></font>')
+			self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h1>查询赛季：' + self.query_filename + '</h1></font><br>')
 			
 			if aronares["records"] == []:
 				self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>未找到匹配结果</h2><br><br>')
@@ -3840,6 +4004,10 @@ class SettingsDialog(QDialog):
 		self.btn_ADBpath = QPushButton('选择',self)
 		self.label_ADBport = QLabel('ADB端口', self)
 		self.lineEdit_ADBport = QLineEdit(self)	
+		self.label_watcherpath = QLabel('简体中文截图参数文件路径', self)
+		self.lineEdit_watcherpath = QLineEdit(self)
+		self.btn_watcherpath = QPushButton('选择',self)
+		
 		self.btnOk = QPushButton('确认',self)
 		
 		self.ComboBox_session.setEditable(True)
@@ -3848,6 +4016,7 @@ class SettingsDialog(QDialog):
 		
 		self.lineEdit_screenparam.setReadOnly(True)
 		self.lineEdit_ADBpath.setReadOnly(True)
+		self.lineEdit_watcherpath.setReadOnly(True)
 		
 		vbox = QVBoxLayout()
 		
@@ -3857,9 +4026,13 @@ class SettingsDialog(QDialog):
 		RBLayout1 = QHBoxLayout()
 		RBLayout1.addWidget(self.lineEdit_ADBpath)
 		RBLayout1.addWidget(self.btn_ADBpath)
+		RBLayout2 = QHBoxLayout()
+		RBLayout2.addWidget(self.lineEdit_watcherpath)
+		RBLayout2.addWidget(self.btn_watcherpath)
 		
 		self.btn_screenparam.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btn_ADBpath.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btn_watcherpath.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		
 		vbox.addWidget(self.label_session)
 		vbox.addWidget(self.ComboBox_session)
@@ -3869,6 +4042,8 @@ class SettingsDialog(QDialog):
 		vbox.addLayout(RBLayout1)
 		vbox.addWidget(self.label_ADBport)
 		vbox.addWidget(self.lineEdit_ADBport)
+		vbox.addWidget(self.label_watcherpath)
+		vbox.addLayout(RBLayout2)
 		vbox.addWidget(self.btnOk)
 		vbox.addStretch(1)
 		self.setLayout(vbox)
@@ -3879,15 +4054,18 @@ class SettingsDialog(QDialog):
 		screenparam = self.cf.get("filepath","sc_screenpath")
 		ADB_path = self.cf.get("filepath","ADB_path")
 		ADB_port = self.cf.get("filepath","ADB_port")
+		watcher_path = self.cf.get("filepath","watcher_path")
 		self.ComboBox_session.setCurrentText(session)
 		self.lineEdit_screenparam.setText(screenparam)
 		self.lineEdit_ADBpath.setText(ADB_path)
 		self.lineEdit_ADBport.setText(ADB_port)
+		self.lineEdit_watcherpath.setText(watcher_path)
 		
 		self.btnOk.clicked.connect(self.save_settings)
 		self.btnOk.clicked.connect(self.close)	
 		self.btn_screenparam.clicked.connect(self.seclet_screenparam)	
-		self.btn_ADBpath.clicked.connect(self.seclet_ADBpath)	
+		self.btn_ADBpath.clicked.connect(self.seclet_ADBpath)
+		self.btn_watcherpath.clicked.connect(self.seclet_watcherpath)
 		self.show()
 		
 	def seclet_screenparam(self):
@@ -3898,11 +4076,16 @@ class SettingsDialog(QDialog):
 		ADB_path = QFileDialog.getOpenFileName(self, 'ADB路径选择', '.', '*.exe')
 		self.lineEdit_ADBpath.setText(ADB_path[0])
 		
+	def seclet_watcherpath(self):
+		watcher_path = QFileDialog.getExistingDirectory(self, 'ADB路径选择', '.')
+		self.lineEdit_watcherpath.setText(watcher_path)
+		
 	def save_settings(self):
 		self.cf.set('filepath', 'sc_screenpath', self.lineEdit_screenparam.text())
 		self.cf.set('filepath', 'query_filename', self.ComboBox_session.currentText())
 		self.cf.set('filepath', 'ADB_path', self.lineEdit_ADBpath.text())
 		self.cf.set('filepath', 'ADB_port', self.lineEdit_ADBport.text())
+		self.cf.set('filepath', 'watcher_path', self.lineEdit_watcherpath.text())
 		with open('./conf.ini', 'w') as configfile:
 			self.cf.write(configfile)
 		configfile.close()
