@@ -4086,7 +4086,7 @@ class SettingsDialog(QDialog):
 		self.cf.set('filepath', 'ADB_path', self.lineEdit_ADBpath.text())
 		self.cf.set('filepath', 'ADB_port', self.lineEdit_ADBport.text())
 		self.cf.set('filepath', 'watcher_path', self.lineEdit_watcherpath.text())
-		with open('./conf.ini', 'w') as configfile:
+		with open('./conf.ini', 'w', encoding="utf-8") as configfile:
 			self.cf.write(configfile)
 		configfile.close()
 		
