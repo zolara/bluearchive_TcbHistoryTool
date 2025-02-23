@@ -13,7 +13,8 @@
 QQ群 945558059 群头像为小瞬。
 
 <h2>Usage使用方法</h2>
-![rm_img0](https://github.com/user-attachments/assets/620b60bf-dd82-49b0-9740-8895b96a236b)
+
+![rm_img0](https://github.com/user-attachments/assets/795dd269-e293-438c-8014-1b1a8c198964)
 
 
 <h2>新学生数据包更新方法</h2>
