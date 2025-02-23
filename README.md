@@ -13,7 +13,7 @@
 QQ群 945558059 群头像为小瞬。
 
 <h2>Usage使用方法</h2>
-![img](https://github.com/zolara/bluearchive_TcbHistoryTool/blob/master/data/images/rm_img0.png)
+![img](https://github.com/zolara/bluearchive_TcbHistoryTool/data/images/rm_img0.png)
 
 <h2>新学生数据包更新方法</h2>
 运行根目录下update.bat自动下载更新数据包。
