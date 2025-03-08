@@ -14,7 +14,8 @@ QQ群 945558059 群头像为小瞬。
 
 <h2>使用方法Usage</h2>
 
-![rm_img0](https://github.com/user-attachments/assets/795dd269-e293-438c-8014-1b1a8c198964)
+![91257043AB1EEB0B60561AA37B3DFF1A](https://github.com/user-attachments/assets/0978f062-c695-4b21-938d-0966657e0688)
+
 
 首次使用请先运行根目录下update.bat更新数据包。
 1. 点击新建记录表，新建一张空白的记录表；
