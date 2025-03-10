@@ -24,6 +24,7 @@ from paddleocr import PaddleOCR, draw_ocr
 print("网络模块载入中……")
 import requests
 print("用户界面载入中……")
+from tkinter import *
 import webbrowser
 from jinja2 import Template
 from tkinter import filedialog, messagebox
@@ -62,6 +63,7 @@ class MainWindow(QWidget):
 		self.fname = ''
 		self.picname = ''
 		self.userid = ''
+		self.currentpage = -1
 		self.screenshots_cache_path = './cache/'
 		self.df_output = pd.DataFrame()
 		self.cf = configparser.ConfigParser()
@@ -74,7 +76,7 @@ class MainWindow(QWidget):
 
 	def initUI(self):
 		self.resize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.5.0 Beta')
+		self.setWindowTitle('普拉娜的笔记本 v1.5.1')
 		#self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.setAcceptDrops(True)			
 		
@@ -94,6 +96,7 @@ class MainWindow(QWidget):
 		self.btnUpload = QPushButton('上传对策至什亭之匣',self)
 		self.btnWatcher = QPushButton('截图监听',self)
 		self.btnADB = QPushButton('自动翻表',self)
+		self.btnNodata = QPushButton('空缺值统计',self)
 		self.btnSts = QPushButton('高胜率统计',self)
 		self.btnAlice = QPushButton('从JSON文件导入记录',self)
 		self.btnHelp = QPushButton('使用帮助',self)
@@ -101,6 +104,10 @@ class MainWindow(QWidget):
 		self.btnSC = QRadioButton("简体中文")
 		self.btnTC = QRadioButton("繁体中文")
 		self.btnJP = QRadioButton("日文")
+		self.btnUppage = QPushButton('上一页',self)
+		self.btnDownpage = QPushButton('下一页',self)
+		self.lineEdit_page = QLineEdit(self)
+		self.btnJumppage = QPushButton('跳转',self)
 		self.content = QTextBrowser()
 		
 		self.content.setReadOnly(True)
@@ -118,6 +125,10 @@ class MainWindow(QWidget):
 		self.setLayout(grid)
 		
 		TopLayout = QHBoxLayout()
+		TopLayout.addWidget(self.btnUppage)
+		TopLayout.addWidget(self.btnDownpage)
+		TopLayout.addWidget(self.lineEdit_page)
+		TopLayout.addWidget(self.btnJumppage)
 		TopLayout.addStretch(1)
 		TopLayout.addWidget(self.btnOutput)
 		TopLayout.addWidget(self.btnDelete)
@@ -139,6 +150,10 @@ class MainWindow(QWidget):
 		MidLayout3 = QHBoxLayout()
 		MidLayout3.addWidget(self.btnWatcher)
 		MidLayout3.addWidget(self.btnADB)
+		
+		MidLayout4 = QHBoxLayout()
+		MidLayout4.addWidget(self.btnNodata)
+		MidLayout4.addWidget(self.btnSts)
 	
 		RBLayout = QHBoxLayout()
 		RBLayout.addWidget(self.btnSC)
@@ -154,7 +169,7 @@ class MainWindow(QWidget):
 		grid.addLayout(MidLayout,6,1,1,1)
 		grid.addWidget(self.btnUpload,7,1,1,1)
 		grid.addLayout(MidLayout3,8,1,1,1)
-		grid.addWidget(self.btnSts,9,1,1,1)
+		grid.addLayout(MidLayout4,9,1,1,1)
 		grid.addWidget(self.btnAlice,10,1,1,1)
 		grid.addLayout(RBLayout,12,1,1,1)
 		grid.addLayout(MidLayout2,13,1,1,1)
@@ -176,11 +191,17 @@ class MainWindow(QWidget):
 		self.btnUpload.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnWatcher.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnADB.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnNodata.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnSts.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnAlice.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnHelp.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnSetting.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
-		self.content.setStyleSheet("background-color : rgba(255, 255, 255, 50)")	
+		self.btnUppage.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnDownpage.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.lineEdit_page.setFixedSize(40,30)
+		self.lineEdit_page.setStyleSheet("QLineEdit { text-align: center; }")
+		self.btnJumppage.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.content.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnSC.setIcon(QIcon("QRadioButton::indicator:unchecked {border-image: url(./data/icon/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}"))
 		self.btnTC.setIcon(QIcon("QRadioButton::indicator:unchecked {border-image: url(./data/icon/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}"))
 		self.btnJP.setIcon(QIcon("QRadioButton::indicator:unchecked {border-image: url(./data/icon/radiobutton_unchecked.svg);}" "QRadioButton::indicator:checked {border-image: url(./source/radiobutton_checked.svg);}"))
@@ -208,6 +229,11 @@ class MainWindow(QWidget):
 		self.btnHelp.clicked.connect(self.show_help)
 		self.btnSetting.clicked.connect(self.show_settings)
 		self.btnAlice.clicked.connect(self.show_alice)
+		self.btnUppage.clicked.connect(self.up_page)
+		self.btnDownpage.clicked.connect(self.down_page)
+		self.btnJumppage.clicked.connect(self.jump_page)
+		self.btnNodata.clicked.connect(self.query_nan)
+		
 		
 		self.content.append("欢迎回来")
 		#self.content.append("请确保本软件路径、截图保存路径等仅存在英文字符哦。")
@@ -216,7 +242,7 @@ class MainWindow(QWidget):
 	def JP_select(self, event):
 		if self.server_la != 'JP':
 			self.cf.set('server', 'server_la', 'JP')
-			with open('./conf.ini', 'w') as configfile:
+			with open('./conf.ini', 'w', encoding="utf-8") as configfile:
 				self.cf.write(configfile)
 			configfile.close()
 		
@@ -228,7 +254,7 @@ class MainWindow(QWidget):
 	def TC_select(self, event):
 		if self.server_la != 'TC':
 			self.cf.set('server', 'server_la', 'TC')
-			with open('./conf.ini', 'w') as configfile:
+			with open('./conf.ini', 'w', encoding="utf-8") as configfile:
 				self.cf.write(configfile)
 			configfile.close()
 		
@@ -240,7 +266,7 @@ class MainWindow(QWidget):
 	def SC_select(self, event):
 		if self.server_la != 'SC':
 			self.cf.set('server', 'server_la', 'SC')
-			with open('./conf.ini', 'w') as configfile:
+			with open('./conf.ini', 'w', encoding="utf-8") as configfile:
 				self.cf.write(configfile)
 			configfile.close()
 		
@@ -318,7 +344,7 @@ class MainWindow(QWidget):
 			if new_pic_path != '':
 				self.last_filepath = new_pic_path
 			self.cf.set('filepath', 'last_filepath', new_pic_path)
-			with open('./conf.ini', 'w') as configfile:
+			with open('./conf.ini', 'w', encoding="utf-8") as configfile:
 				self.cf.write(configfile)
 			configfile.close()
 			
@@ -358,7 +384,7 @@ class MainWindow(QWidget):
 				if new_pic_path != '':
 					self.last_filepath = new_pic_path
 				self.cf.set('filepath', 'last_filepath', new_pic_path)
-				with open('./conf.ini', 'w') as configfile:
+				with open('./conf.ini', 'w', encoding="utf-8") as configfile:
 					self.cf.write(configfile)
 				configfile.close()
 				
@@ -995,18 +1021,18 @@ class MainWindow(QWidget):
 				Eatk1 = w_res0
 				Espl1 = w_res1
 				Espl2 = w_res2			
-			elif Ecolor2[2]<100:
+			elif Ecolor3[2]<100:
 				Eatk1 = w_res0
 				Eatk2 = w_res1
 				Espl1 = w_res2
 				Espl2 = w_res3						
-			elif Ecolor2[2]<100:
+			elif Ecolor4[2]<100:
 				Eatk1 = w_res0
 				Eatk2 = w_res1
 				Eatk3 = w_res2
 				Espl1 = w_res3
 				Espl2 = w_res4						
-			elif Ecolor2[2]<100:
+			elif Ecolor5[2]<100:
 				Eatk1 = w_res0
 				Eatk2 = w_res1
 				Eatk3 = w_res2
@@ -1153,7 +1179,47 @@ class MainWindow(QWidget):
 				if confirm_dialog.exec() == QDialog.Accepted:
 					pass
 			
-	def show_csv(self, df_img):	
+	def query_nan(self, event):
+		if self.fname == '':
+			the_dialog = NoCsvOpenDialog()
+			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+				pass
+		else:
+			df = pd.read_csv(self.fname)
+			df = df.loc[(df['FAttacker1'] == '1NoData') | (df['FAttacker2'] == '1NoData') | (df['FAttacker3'] == '1NoData') | (df['FAttacker4'] == '1NoData') | (df['FSpecial1'] == '1NoData') | (df['FSpecial2'] == '1NoData') | (df['EAttacker1'] == '1NoData') | (df['EAttacker2'] == '1NoData') | (df['EAttacker3'] == '1NoData') | (df['EAttacker4'] == '1NoData') | (df['ESpecial1'] == '1NoData') | (df['ESpecial2'] == '1NoData')]
+			self.currentpage = -1
+			self.show_csv(df)
+			self.df_output = df.copy()
+	
+	def jump_page(self, event):
+		if self.fname == '':
+			the_dialog = NoCsvOpenDialog()
+			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+				pass
+		else:
+			df_img = self.df_output
+			self.show_csv(df_img, index = int(self.lineEdit_page.text()), offset = 0)
+	
+	def up_page(self, event):
+		if self.fname == '':
+			the_dialog = NoCsvOpenDialog()
+			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+				pass
+		else:
+			df_img = self.df_output
+			self.show_csv(df_img, index = self.currentpage, offset = -1)
+	
+	def down_page(self, event):
+		if self.fname == '':
+			the_dialog = NoCsvOpenDialog()
+			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+				pass
+		else:
+			df_img = self.df_output
+			self.show_csv(df_img, index = self.currentpage, offset = 1)
+			
+	def show_csv(self, df_img, index=-1, offset=0):	
+		page_counts = 100
 		self.content.clear()
 		
 		file_path_name = self.fname.split('/')
@@ -1163,14 +1229,38 @@ class MainWindow(QWidget):
 		self.content.append("<h1 align='center'>"+table_name+"</h1>")
 		plana_query_filename = self.query_filename
 		arona_query_filename = self.query_filename
-		df_length = len(df_img)
 		
-		if df_length > 150:
-			df_head = df_length - 150
+		df_length = len(df_img)
+		total_page = int(df_length / page_counts) + 1
+		
+		if self.currentpage == -1:
+			if index == -1:
+				self.currentpage = total_page + offset
+			else:
+				self.currentpage = index + offset
+		else:
+			if index == -1:
+				self.currentpage = self.currentpage + offset
+			else:
+				self.currentpage = index + offset
+			
+		if self.currentpage < 1:
+			self.currentpage = 1
+		elif self.currentpage > total_page:
+			self.currentpage = total_page
+			
+		if total_page != 0:
+			df_head = (self.currentpage - 1) * page_counts
+			df_tail = self.currentpage * page_counts
+			if df_tail > df_length:
+				df_tail = df_length
 		else:
 			df_head = 0
+			df_tail = 0
 		
-		for num in range(df_head, df_length):
+		self.lineEdit_page.setText(str(self.currentpage))
+		
+		for num in range(df_head, df_tail):
 			template_string_data = '''
 		<!doctype html>
 		<html lang="zh-CN">
@@ -1179,7 +1269,7 @@ class MainWindow(QWidget):
 
 			<body>
 
-			<table border="0" width="780" align="center" style="background-color: rgba(255, 255, 255, 0.5);" >
+			<table border="0" width="785" align="center" style="background-color: rgba(255, 255, 255, 0.5);" >
 				<tr>
 					<th colspan="9">{{ UserId }}</th>
 				</tr>
@@ -1206,7 +1296,9 @@ class MainWindow(QWidget):
 					<th>{{ ESpecial2 }}</th>
 				</tr>
 				<tr>
-					<th colspan="9">{{ Note }}</th>
+					<th>{{ space }}</th>
+					<th colspan="7" align="left"><br>{{ Note }}</th>
+					<th>{{ space }}</th>
 				</tr>
 				</body>
 			</html>
@@ -1214,9 +1306,9 @@ class MainWindow(QWidget):
 
 
 			if pd.isnull(df_img.iloc[num,17]):
-				userid_word = '<br><h3>' + str(df_img.iloc[num,0]) + '</h3>'
+				userid_word = '<br><h3>' + str(num+1) + ".&nbsp;" + '<a href="userId--' + str(df_img.iloc[num,0]) + '" sytle="text-decoration: none;">' +str(df_img.iloc[num,0]) + '</h3>' + '</a>'
 			else:
-				userid_word = '<h3>' + str(df_img.iloc[num,0]) + '</h3><br><h3>' + str(df_img.iloc[num,17]) + '</h3>'
+				userid_word = '<h3>' + str(num+1) + ".&nbsp;" + '<a href="userId--' + str(df_img.iloc[num,0]) + '" sytle="text-decoration: none;">' + str(df_img.iloc[num,0]) + '</h3><br><h3>' + str(df_img.iloc[num,17]) + '</h3>' + '</a>'
 				
 			if pd.isnull(df_img.iloc[num,18]):
 				link_word = ''
@@ -1246,7 +1338,7 @@ class MainWindow(QWidget):
 			
 			template_data = Template(template_string_data)
 			html_data = template_data.render(
-				UserId = '<a href="userId--' + str(df_img.iloc[num,0]) + '" sytle="text-decoration: none;">' + userid_word + '</a>',
+				UserId = userid_word,
 				Date = '<br><br>' + str(df_img.iloc[num,1][0:10]),			
 				FAttacker1 = '<img src=' + './data/images/stud/' + df_img.iloc[num,2] + '.png width=80/>',
 				FAttacker2 = '<img src=' + './data/images/stud/' + df_img.iloc[num,3] + '.png width=80/>',
@@ -1422,8 +1514,10 @@ class MainWindow(QWidget):
 				df.to_csv(self.fname, index=False)
 				print('The file format has been updated.')
 			
+			self.currentpage = -1
 			self.content.clear()
-			df_img = df		
+			df_img = df
+			self.df_output = df_img
 			self.show_csv(df_img)
 			winrate = '{:.2%}'.format(self.cal_winrate(df_img))
 			new_wr_word = ' 胜率：' + winrate + " （总数：" + str(len(df_img)) + "）"	
@@ -1439,6 +1533,8 @@ class MainWindow(QWidget):
 			df = pd.read_csv(self.fname)	
 			self.content.clear()
 			df_img = df
+			self.currentpage = -1
+			self.df_output = df_img
 			self.show_csv(df_img)
 			winrate = '{:.2%}'.format(self.cal_winrate(df_img))
 			new_wr_word = ' 胜率：' + winrate + " （总数：" + str(len(df_img)) + "）"	
@@ -1600,6 +1696,7 @@ class MainWindow(QWidget):
 			df = df[df['Title'].str.contains(title, na=False)]
 		
 		print(df)
+		self.currentpage = -1
 		self.show_csv(df)
 		self.df_output = df.copy()
 		winrate = '{:.2%}'.format(self.cal_winrate(df))
@@ -1686,6 +1783,7 @@ class MainWindow(QWidget):
 			if stuid_list1 == []:
 				winrate = '{:.2%}'.format(self.cal_winrate(df))
 				new_wr_word = wr_word + ' 胜率：' + winrate
+				self.currentpage = -1
 				self.show_csv(df)
 				self.df_output = df.copy()
 				self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')
@@ -1702,6 +1800,7 @@ class MainWindow(QWidget):
 		if e_namelist_length == -1:
 			winrate = '{:.2%}'.format(self.cal_winrate(df))
 			new_wr_word = wr_word1 + " 胜率：" + winrate + " （总数：" + str(len(df)) + "）"	
+			self.currentpage = -1
 			self.show_csv(df)
 			self.df_output = df.copy()
 			self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')
@@ -1733,6 +1832,7 @@ class MainWindow(QWidget):
 		df = pd.read_csv(self.fname)
 		df_img = df[df['UserId'] == userid]
 		print(df_img)
+		self.currentpage = -1
 		self.show_csv(df_img)
 		self.df_output = df_img.copy()
 		winrate = '{:.2%}'.format(self.cal_winrate(df_img))
@@ -1779,7 +1879,30 @@ class MainWindow(QWidget):
 			print('No pics!')
 		else:
 			file_path = str(self.fname)
+			
 			for img_path in img_names:
+				img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+				height, width = img.shape[:2]
+				if height != 1080:
+					print("分辨率非法！")
+					return 0
+				if width != 1920:
+					print("分辨率非法！")
+					return 0
+					
+				pixel_value1 = img[400,1600].tolist()
+				print(pixel_value1)
+				if pixel_value1[0] < 211 or pixel_value1[0] > 221 or pixel_value1[1] < 219 or pixel_value1[1] > 229 or pixel_value1[2] < 249 or pixel_value1[2] > 259:
+				#if pixel_value1 != [216, 224, 254, 255]:
+					print("未检测出战报页")
+					return
+				pixel_value2 = img[500,1000].tolist()
+				print(pixel_value2)
+				if pixel_value2[0] < 211 or pixel_value2[0] > 221 or pixel_value2[1] < 219 or pixel_value2[1] > 229 or pixel_value2[2] < 249 or pixel_value2[2] > 259:
+				#if pixel_value2 != [216, 224, 254, 255]:
+					print("未检测出战报页")
+					return
+				
 				try:
 					print(img_path)
 					isBulk = True
@@ -1802,6 +1925,7 @@ class MainWindow(QWidget):
 		df = pd.read_csv(self.fname)
 		timestamp_list = df['Date'].values.tolist()
 		timestamp_list = list(set(timestamp_list))
+		logs = []
 
 		for item in alice_json:
 			if time.strptime(item["BattleEndTime"][0:10], '%Y-%m-%d') < time.strptime(date, '%Y-%m-%d'):
@@ -1816,10 +1940,10 @@ class MainWindow(QWidget):
 				if item["type"] == "attack":
 					continue
 			
-			Attacker_striker_list = ['','','','']
-			Attacker_special_list = ['','']
-			Defender_striker_list = ['','','','']
-			Defender_special_list = ['','']
+			Attacker_striker_list = ['1NoData','1NoData','1NoData','1NoData']
+			Attacker_special_list = ['1NoData','1NoData']
+			Defender_striker_list = ['1NoData','1NoData','1NoData','1NoData']
+			Defender_special_list = ['1NoData','1NoData']
 
 			for attacker_striker in item["AttackerUserDB"]["TeamSettingDB"]["MainCharacters"]:
 				Attacker_striker_list[attacker_striker["Position"]-1] = attacker_striker["UniqueId"]
@@ -1837,55 +1961,73 @@ class MainWindow(QWidget):
 			#new_data = [userId,date,Fatk1,Fatk2,Fatk3,Fatk4,Fspl1,Fspl2,formation,Eatk1,Eatk2,Eatk3,Eatk4,Espl1,Espl2,result,note,title,link,bv,check]
 			battle_list = ['',  '',  '',   '',   '',   '',   '',   '',   '',       '',   '',   '',   '',   '',   '',   '',    '',  '',   '',  '','']
 			
-			
 			battle_list[1] = item["BattleEndTime"]
 			if item["result"] == "win":
 				battle_list[15] = "胜利"
 			else:
 				battle_list[15] = "失败"
 			
-			if item["type"] == "attack":
-				battle_list[0] = item["DefenderUserDB"]["NickName"]
-				battle_list[2] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[0]), 'auto')
-				battle_list[3] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[1]), 'auto')
-				battle_list[4] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[2]), 'auto')
-				battle_list[5] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[3]), 'auto')
-				battle_list[6] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_special_list[0]), 'auto')
-				battle_list[7] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_special_list[1]), 'auto')
-				battle_list[9]  = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[0]), 'auto')
-				battle_list[10] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[1]), 'auto')
-				battle_list[11] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[2]), 'auto')
-				battle_list[12] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[3]), 'auto')
-				battle_list[13] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_special_list[0]), 'auto')
-				battle_list[14] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_special_list[1]), 'auto')
-				battle_list[8] = "进攻"
-			else:
-				battle_list[0] = item["AttackerUserDB"]["NickName"]
-				battle_list[2] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[0]), 'auto')
-				battle_list[3] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[1]), 'auto')
-				battle_list[4] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[2]), 'auto')
-				battle_list[5] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[3]), 'auto')
-				battle_list[6] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_special_list[0]), 'auto')
-				battle_list[7] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_special_list[1]), 'auto')
-				battle_list[9]  = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[0]), 'auto')
-				battle_list[10] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[1]), 'auto')
-				battle_list[11] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[2]), 'auto')
-				battle_list[12] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[3]), 'auto')
-				battle_list[13] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_special_list[0]), 'auto')
-				battle_list[14] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_special_list[1]), 'auto')
-				battle_list[8] = "防守"
+			try:
 			
-			print('insert: ')
-			print(battle_list)
-			
-			file_path = str(self.fname)
-			with open(file_path, "a", encoding="utf-8", newline="") as f:
-				wf = csv.writer(f)
-				wf.writerow(battle_list)
-				f.close()
-			
+				if item["type"] == "attack":
+					battle_list[0] = item["DefenderUserDB"]["NickName"]
+					battle_list[2] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[0]), 'auto')
+					battle_list[3] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[1]), 'auto')
+					battle_list[4] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[2]), 'auto')
+					battle_list[5] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[3]), 'auto')
+					battle_list[6] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_special_list[0]), 'auto')
+					battle_list[7] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_special_list[1]), 'auto')
+					battle_list[9]  = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[0]), 'auto')
+					battle_list[10] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[1]), 'auto')
+					battle_list[11] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[2]), 'auto')
+					battle_list[12] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[3]), 'auto')
+					battle_list[13] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_special_list[0]), 'auto')
+					battle_list[14] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_special_list[1]), 'auto')
+					battle_list[8] = "进攻"
+				else:
+					battle_list[0] = item["AttackerUserDB"]["NickName"]
+					battle_list[2] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[0]), 'auto')
+					battle_list[3] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[1]), 'auto')
+					battle_list[4] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[2]), 'auto')
+					battle_list[5] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_striker_list[3]), 'auto')
+					battle_list[6] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_special_list[0]), 'auto')
+					battle_list[7] = pn_utils.sc_to_code(pn_utils.id_to_sc(Defender_special_list[1]), 'auto')
+					battle_list[9]  = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[0]), 'auto')
+					battle_list[10] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[1]), 'auto')
+					battle_list[11] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[2]), 'auto')
+					battle_list[12] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_striker_list[3]), 'auto')
+					battle_list[13] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_special_list[0]), 'auto')
+					battle_list[14] = pn_utils.sc_to_code(pn_utils.id_to_sc(Attacker_special_list[1]), 'auto')
+					battle_list[8] = "防守"
+				
+				print('insert: ')
+				print(battle_list)
+				
+				file_path = str(self.fname)
+				with open(file_path, "a", encoding="utf-8", newline="") as f:
+					wf = csv.writer(f)
+					wf.writerow(battle_list)
+					f.close()
+			except:
+				logs.append(item["BattleEndTime"])
+				
 		self.refresh_table()
-	
+		
+		
+		if logs == []:
+			print('Done!')
+			bulk_dialog = BulkOKDialog()
+			if bulk_dialog.exec() == QDialog.Accepted:
+				pass
+		else:
+			print('')
+			print('============= WARNING =============')
+			print('The following records analysis failed:')
+			bulk_dialog = BulkLogDialog()
+			self.signal_bulklog.emit(logs)
+			if bulk_dialog.exec() == QDialog.Accepted:
+				pass
+				
 	def start_watch(self, event):
 		if self.fname == '' :
 			the_dialog = NoCsvOpenDialog()
@@ -2035,7 +2177,7 @@ class ConfirmDialog(QDialog):
 		self.method = ''
 		self.asset_link = ''
 		self.cf = configparser.ConfigParser()
-		self.cf.read("./conf.ini")
+		self.cf.read("./conf.ini",encoding='utf-8')
 		self.last_filepath = self.cf.get("filepath","asset_path")
 		self.initUI()
 		window.signal_setbattlelist.connect(self.get_battlelist)
@@ -2053,6 +2195,7 @@ class ConfirmDialog(QDialog):
 		stud_dict = pd.read_json('./data/studstr_nickname2code.json', typ='series')
 		completer_words = list(stud_dict.keys())
 		completer = QCompleter(completer_words)
+		completer.setCaseSensitivity(Qt.CaseInsensitive)
 		completer.setFilterMode(Qt.MatchContains)
 		
 		self.btnLink = QPushButton('链接素材（可选）',self)
@@ -2268,6 +2411,7 @@ class ConfirmDialog(QDialog):
 		df = pd.read_csv(self.file_path)
 		user_list = list(set(df['UserId']))
 		completer_user = QCompleter(user_list)
+		completer_user.setCaseSensitivity(Qt.CaseInsensitive)
 		completer_user.setFilterMode(Qt.MatchContains)
 		self.lineEdit_user.setCompleter(completer_user)
 		
@@ -2282,7 +2426,7 @@ class ConfirmDialog(QDialog):
 			self.last_filepath = fname_r
 			self.asset_link = fname_r
 		self.cf.set('filepath', 'asset_path', fname_r)
-		with open('./conf.ini', 'w') as configfile:
+		with open('./conf.ini', 'w', encoding="utf-8") as configfile:
 			self.cf.write(configfile)
 		configfile.close()
 
@@ -2368,6 +2512,7 @@ class QueryDialog(QDialog):
 		stud_dict = pd.read_json('./data/studstr_nickname2code.json', typ='series')
 		completer_words = list(stud_dict.keys())
 		completer = QCompleter(completer_words)
+		completer.setCaseSensitivity(Qt.CaseInsensitive)
 		completer.setFilterMode(Qt.MatchContains)
 		
 		self.btnOk = QPushButton('OK',self)
@@ -2547,6 +2692,7 @@ class QueryDialog(QDialog):
 		df = pd.read_csv(file_path)	
 		user_list = list(set(df['UserId']))
 		completer_user = QCompleter(user_list)
+		completer_user.setCaseSensitivity(Qt.CaseInsensitive)
 		completer_user.setFilterMode(Qt.MatchContains)
 		self.lineEdit_user.setCompleter(completer_user)
 				
@@ -2615,6 +2761,7 @@ class DashboardDialog(QDialog):
 		stud_dict = pd.read_json('./data/studstr_nickname2code.json', typ='series')
 		completer_words = list(stud_dict.keys())
 		completer = QCompleter(completer_words)
+		completer.setCaseSensitivity(Qt.CaseInsensitive)
 		completer.setFilterMode(Qt.MatchContains)
 		self.lineEdit0.setCompleter(completer)
 		self.lineEdit1.setCompleter(completer)
@@ -2680,6 +2827,7 @@ class SearchDialog(QDialog):
 		user_list = list(set(df['UserId']))
 		completer = QCompleter(user_list)
 		completer.setFilterMode(Qt.MatchContains)
+		completer.setCaseSensitivity(Qt.CaseInsensitive)
 		self.lineEdit.setCompleter(completer)
 		
 	def paintEvent(self, event):		
@@ -2727,6 +2875,7 @@ class ReplaceDialog(QDialog):
 		self.fname = file_path
 		user_list = list(set(df['UserId']))
 		completer = QCompleter(user_list)
+		completer.setCaseSensitivity(Qt.CaseInsensitive)
 		completer.setFilterMode(Qt.MatchContains)
 		self.lineEdit.setCompleter(completer)
 		self.lineEdit1.setCompleter(completer)
@@ -3057,7 +3206,7 @@ class BulkOKDialog(QDialog):
 		self.initUI()
 		
 	def initUI(self):
-		self.setWindowTitle('批量导入完成')
+		self.setWindowTitle('导入完成')
 		self.setFixedSize(550, 200)
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
 		self.setWindowFlags(Qt.WindowStaysOnTopHint)
@@ -3094,13 +3243,13 @@ class BulkLogDialog(QDialog):
 		self.show()
 		
 	def initUI(self):
-		self.setWindowTitle('批量导入完成')
+		self.setWindowTitle('导入完成')
 		self.setFixedSize(550, 200)
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
 		self.setWindowFlags(Qt.WindowStaysOnTopHint)
 		
 		self.label1 = QLabel()
-		self.label1.setText("导入完成，以下图片导入失败：")
+		self.label1.setText("导入完成，以下项目导入失败：")
 		self.label1.setAlignment(Qt.AlignRight)
 		self.label1.setStyleSheet("font-weight:bold;font-size:20px")
 		
@@ -3162,6 +3311,7 @@ class ADBDialog(QDialog):
 		self.cf.read("./conf.ini",encoding='utf-8')
 		self.adb_path = self.cf.get("filepath","adb_path")
 		self.adb_port = "127.0.0.1:" + self.cf.get("filepath","adb_port")
+		self.readtable_swipe_distance = int(self.cf.get("param","readtable_swipe_distance"))
 		self.screenshots_cache_path = './cache/'
 		self.initUI()
 		print(self.adb_path)
@@ -3208,9 +3358,9 @@ class ADBDialog(QDialog):
 	def try_connect(self):
 		res_connect = subprocess.run([self.adb_path,"connect",self.adb_port], encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 		if 'connected' in res_connect.stdout.lower() or 'already connected' in res_connect.stdout.lower():
-			return 1
-		else:
 			return 0
+		else:
+			return 1
 		
 	def try_shell(self):
 		res_shell = subprocess.Popen([self.adb_path,"-s",self.adb_port,"shell"], encoding="utf-8",text=True, stdout=subprocess.PIPE)
@@ -3225,26 +3375,26 @@ class ADBDialog(QDialog):
 		height, width = img1.shape[:2]
 		if height != 1080:
 			print("分辨率非法！")
-			return 0
+			return 1
 		if width != 1920:
 			print("分辨率非法！")
-			return 0
+			return 1
 		
 		pixel_value3 = img1[300,1000].tolist()
 		#if pixel_value1 != [102, 239, 253, 255]:
 		print(pixel_value3)
 		if pixel_value3[0] < 97 or pixel_value3[0] > 107 or pixel_value3[1] < 234 or pixel_value3[1] > 244 or pixel_value3[2] < 248 or pixel_value3[2] > 258:
 			print("未检测出历史记录页")
-			return 0
+			return 1
 			
 		pixel_value4 = img1[200,1000].tolist()
 		#if pixel_value1 != [111, 104, 85, 255]:
 		print(pixel_value4)
 		if pixel_value4[0] < 106 or pixel_value4[0] > 116 or pixel_value4[1] < 99 or pixel_value4[1] > 109 or pixel_value4[2] < 80 or pixel_value4[2] > 90:
 			print("未检测出历史记录页")
-			return 0
+			return 1
 			
-		for i in range(int(self.lineEdit_count.text())):
+		for i in range(int(self.lineEdit_count.text())-1, -1, -1):
 			subprocess.run([self.adb_path,"shell","input","tap","1422","388"],encoding="utf-8")
 			time.sleep(1)
 			subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/"+str(i)+".png"],encoding="utf-8")
@@ -3257,24 +3407,24 @@ class ADBDialog(QDialog):
 			if pixel_value1[0] < 211 or pixel_value1[0] > 221 or pixel_value1[1] < 219 or pixel_value1[1] > 229 or pixel_value1[2] < 249 or pixel_value1[2] > 259:
 			#if pixel_value1 != [216, 224, 254, 255]:
 				print("未检测出战报页")
-				return 0
+				return 1
 			pixel_value2 = img[60,1600].tolist()
 			print(pixel_value2)
 			if pixel_value2[0] < 43 or pixel_value2[0] > 53 or pixel_value2[1] < 44 or pixel_value2[1] > 54 or pixel_value2[2] < 44 or pixel_value2[2] > 54:
 			#if pixel_value2 != [48, 49, 49, 255]:
 				print("未检测出战报页")
-				return 0
+				return 1
 
 			subprocess.run([self.adb_path,"shell","input","tap","1834","185"],encoding="utf-8")
-			subprocess.run([self.adb_path,"shell","input","swipe","517","581","517","429","500"],encoding="utf-8")
+			subprocess.run([self.adb_path,"shell","input","swipe","517","581","517",str(581-self.readtable_swipe_distance),"500"],encoding="utf-8")
 			time.sleep(0.5)
-		return 1
+		return 0
 		
 	def adb_link(self,path):
 		self.content.append("尝试连接……")
 		
 		res_connect = self.try_connect()
-		if res_connect == 1:
+		if res_connect == 0:
 			self.content.append("连接成功")
 		else:
 			self.content.append("连接失败")
@@ -3283,10 +3433,10 @@ class ADBDialog(QDialog):
 		self.try_shell()
 		
 		loop_res = self.loop_screenshots()
-		if loop_res == 1:
-			self.save_record()
 		if loop_res == 0:
-			self.content.append("异常终止")
+			self.save_record()
+		if loop_res == 1:
+			self.content.append("异常中断")
 			return
 
 	def save_record(self):
@@ -3454,8 +3604,10 @@ class QueryresDialog(QDialog):
 								<th>{{ ESpecial1 }}</th>
 								<th>{{ ESpecial2 }}</th>
 							</tr>
-							<tr width=>
-								<th colspan="9" align="left"><font color="black">{{ Remark }}</font></th>
+							<tr>
+								<th>{{ space }}</th>
+								<th colspan="7" align="left"><font color="black">{{ Remark }}</font></th>
+								<th>{{ space }}</th>
 							</tr>
 							</body>
 						</html>
@@ -3509,13 +3661,14 @@ class UploadDialog(QDialog):
 	
 	def initUI(self):
 		self.setFixedSize(600, 640)  
-		self.setWindowTitle('上传至什亭之匣')
+		self.setWindowTitle('上传至什亭之匣（开发中不可用）')
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
 		#self.setWindowFlags(Qt.WindowStaysOnTopHint)
 		
 		stud_dict = pd.read_json('./data/studstr_nickname2code.json', typ='series')
 		completer_words = list(stud_dict.keys())
 		completer = QCompleter(completer_words)
+		completer.setCaseSensitivity(Qt.CaseInsensitive)
 		completer.setFilterMode(Qt.MatchContains)
 		
 		#self.btnLink = QPushButton('链接素材（可选）',self)
@@ -3801,7 +3954,7 @@ class UploadDialog(QDialog):
 			title_word = self.lineEdit_f1.text() +'-'+ self.lineEdit_f2.text() +'-'+ self.lineEdit_f3.text() +'-'+ self.lineEdit_f4.text()
 			print(title_word)
 		else:
-			print("上传中")
+			print("功能开发中，敬请期待")
 		self.close()
 	
 	def cal_winrate(self, res):
@@ -4004,11 +4157,13 @@ class SettingsDialog(QDialog):
 		self.btn_ADBpath = QPushButton('选择',self)
 		self.label_ADBport = QLabel('ADB端口', self)
 		self.lineEdit_ADBport = QLineEdit(self)	
-		self.label_watcherpath = QLabel('简体中文截图参数文件路径', self)
+		self.label_watcherpath = QLabel('监听截图保存目录路径', self)
 		self.lineEdit_watcherpath = QLineEdit(self)
 		self.btn_watcherpath = QPushButton('选择',self)
+		self.label_swipedistance = QLabel('自动翻表滑动距离', self)
+		self.lineEdit_swipedistance = QLineEdit(self)
 		
-		self.btnOk = QPushButton('确认',self)
+		self.btnOk = QPushButton('确认并重启',self)
 		
 		self.ComboBox_session.setEditable(True)
 		self.ComboBox_session.addItems(["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S17", "S18", "S19", "S20", "S21", "S22", "S23", "S24", "S25", "S26", "S27", "S28", "S29"])
@@ -4044,6 +4199,8 @@ class SettingsDialog(QDialog):
 		vbox.addWidget(self.lineEdit_ADBport)
 		vbox.addWidget(self.label_watcherpath)
 		vbox.addLayout(RBLayout2)
+		vbox.addWidget(self.label_swipedistance)
+		vbox.addWidget(self.lineEdit_swipedistance)
 		vbox.addWidget(self.btnOk)
 		vbox.addStretch(1)
 		self.setLayout(vbox)
@@ -4055,11 +4212,13 @@ class SettingsDialog(QDialog):
 		ADB_path = self.cf.get("filepath","ADB_path")
 		ADB_port = self.cf.get("filepath","ADB_port")
 		watcher_path = self.cf.get("filepath","watcher_path")
+		swipe_distance = self.cf.get("param","readtable_swipe_distance")
 		self.ComboBox_session.setCurrentText(session)
 		self.lineEdit_screenparam.setText(screenparam)
 		self.lineEdit_ADBpath.setText(ADB_path)
 		self.lineEdit_ADBport.setText(ADB_port)
 		self.lineEdit_watcherpath.setText(watcher_path)
+		self.lineEdit_swipedistance.setText(swipe_distance)
 		
 		self.btnOk.clicked.connect(self.save_settings)
 		self.btnOk.clicked.connect(self.close)	
@@ -4086,9 +4245,14 @@ class SettingsDialog(QDialog):
 		self.cf.set('filepath', 'ADB_path', self.lineEdit_ADBpath.text())
 		self.cf.set('filepath', 'ADB_port', self.lineEdit_ADBport.text())
 		self.cf.set('filepath', 'watcher_path', self.lineEdit_watcherpath.text())
-		with open('./conf.ini', 'w') as configfile:
+		self.cf.set('param','readtable_swipe_distance', self.lineEdit_swipedistance.text())
+		with open('./conf.ini', 'w', encoding="utf-8") as configfile:
 			self.cf.write(configfile)
 		configfile.close()
+		
+		app = QCoreApplication.instance()
+		app.quit()
+		subprocess.call([sys.executable] + sys.argv)
 		
 	def paintEvent(self, event):		
 		painter = QPainter(self)
@@ -4123,7 +4287,7 @@ class AliceDialog(QDialog):
 		self.dateEdit.setDisplayFormat('yyyy-MM-dd')
 		self.dateEdit.setStyleSheet("QDateEdit::down-arrow {image: url(./data/icon/down_arrow.svg);}")
 		self.dateEdit.setCalendarPopup(True)
-		self.dateEdit.setDate(QDate.currentDate())
+		self.dateEdit.setDate(QDate.currentDate().addDays(-7))
 		
 		self.btn_jsonselect.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		

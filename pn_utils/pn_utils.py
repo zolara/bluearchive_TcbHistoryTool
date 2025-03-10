@@ -15,7 +15,7 @@ def sc_to_code(stud):
 def sc_to_code(stud, method):
 	if method != 'manual':
 		if stud != '':
-			stud_dict = pd.read_json('./data/studstr_sc2code.json', typ='series')
+			stud_dict = pd.read_json('./data/studstr_nickname2code.json', typ='series')
 			return stud_dict[stud]
 		else:
 			return '1NoData'
@@ -81,6 +81,8 @@ def sc_to_id(stud):
 def id_to_sc(stud):
 	stud_dict = pd.read_json('./data/stuid.json', typ='series')
 	try:
-		return stud_dict[stud]
+		stud_name = stud_dict[str(stud)]
 	except:
-		return ''
+		stud_name = '1Nodata'
+	return stud_name
+
