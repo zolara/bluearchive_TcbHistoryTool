@@ -16,6 +16,7 @@ QQ群 945558059 群头像为小瞬。
 运行软件根目录下update.bat，等待数据文件下载解压。
 
 <h2>使用方法</h2>
+
 ![91257043AB1EEB0B60561AA37B3DFF1A](https://github.com/user-attachments/assets/66572baf-878a-4baa-95d3-68a26e629ae0)
 
 1. 首次使用时，请先运行软件根目录下update.bat更新数据；
