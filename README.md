@@ -23,6 +23,7 @@ QQ群 945558059 群头像为小瞬。
 2. 通过新建记录表常见一张空记录表；
 3. 通过查看记录表打开刚才新建的空表；
 4. 通过保存记录导入战报截图。
+
 <a href="https://www.bilibili.com/video/BV16cPdesE63?vd_source=ce8357ab430d39a6b8d347ae69a0f8b1">视频演示</a>
 
 
