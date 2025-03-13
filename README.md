@@ -54,7 +54,7 @@ pyinstaller.exe -i icon1.ico -D .\main.py --collect-all paddleocr --collect-all 
 ```
 报错解决方法
 1. 编译中报错UserWarning: The numpy.array_api submodule is still experimental. See NEP 47.<br />解决方式：python_path\Lib\site-packages\Pyinstaller\building\build_main.py打开167行：
-/_/_import/_/_(package)改成import package
+__import__(package)改成import package
 2. 运行报错FileNotFoundError: [WinError 2] 系统找不到指定的文件。<br />解决办法：将 ‘your_path\dist\checknum\paddle\base\…\libs’<br />将python_path\Lib\site-packages下面的libs复制在your_path\dist\main\_internal\paddle下面，与\base平级
 3. 运行报错ModuleNotFoundError: No module named 'scipy._lib.array_api_compat.numpy.fft'<br /> 解决办法：将python_path\Lib\site-packages\scipy\_lib复制array_api_compat文件夹到your_path\dist\main\_internal\scipy\_lib下面
 4. 运行报错ModuleNotFoundError: No module named 'scipy.special._special_ufuncs'<br /> 解决办法：python_path\Lib\site-packages\scipy\复制special文件夹your_path\dist\main\_internal\scipy下面
