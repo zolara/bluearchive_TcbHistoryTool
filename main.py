@@ -53,7 +53,7 @@ ba_token = "ba-token xx:xx"
 widgets = None
 
 class MainWindow(QWidget):
-	signal_setbattlelist = Signal(list,str,str)
+	signal_setbattlelist = Signal(list,str,str,int)
 	signal_filename = Signal(str)
 	signal_bulklog = Signal(list)
 	signal_aronares = Signal(dict)
@@ -76,7 +76,7 @@ class MainWindow(QWidget):
 
 	def initUI(self):
 		self.resize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.5.1')
+		self.setWindowTitle('普拉娜的笔记本 v1.5.2')
 		#self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.setAcceptDrops(True)			
 		
@@ -320,7 +320,7 @@ class MainWindow(QWidget):
 			battle_list = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
 			method = 'manual'
 			confirm_dialog = ConfirmDialog()
-			self.signal_setbattlelist.emit(battle_list,file_path,method)
+			self.signal_setbattlelist.emit(battle_list,file_path,method,-1)
 			if confirm_dialog.exec() == QDialog.Accepted:
 				pass
 			self.refresh_table()
@@ -691,7 +691,7 @@ class MainWindow(QWidget):
 			else:
 				method = 'auto'
 				confirm_dialog = ConfirmDialog()
-				self.signal_setbattlelist.emit(battle_list,file_path,method)
+				self.signal_setbattlelist.emit(battle_list,file_path,method,-1)
 				if confirm_dialog.exec() == QDialog.Accepted:
 					pass
 		
@@ -934,7 +934,7 @@ class MainWindow(QWidget):
 			else:
 				method = 'auto'
 				confirm_dialog = ConfirmDialog()
-				self.signal_setbattlelist.emit(battle_list,file_path,method)
+				self.signal_setbattlelist.emit(battle_list,file_path,method,-1)
 				if confirm_dialog.exec() == QDialog.Accepted:
 					pass
 				
@@ -1175,7 +1175,7 @@ class MainWindow(QWidget):
 			else:
 				method = 'auto'
 				confirm_dialog = ConfirmDialog()
-				self.signal_setbattlelist.emit(battle_list,file_path,method)
+				self.signal_setbattlelist.emit(battle_list,file_path,method,-1)
 				if confirm_dialog.exec() == QDialog.Accepted:
 					pass
 			
@@ -1218,7 +1218,7 @@ class MainWindow(QWidget):
 			df_img = self.df_output
 			self.show_csv(df_img, index = self.currentpage, offset = 1)
 			
-	def show_csv(self, df_img, index=-1, offset=0):	
+	def show_csv(self, df_img, index = -1, offset = 0):	
 		page_counts = 100
 		self.content.clear()
 		
@@ -1232,6 +1232,9 @@ class MainWindow(QWidget):
 		
 		df_length = len(df_img)
 		total_page = int(df_length / page_counts) + 1
+		
+		if df_length == 0:
+			return
 		
 		if self.currentpage == -1:
 			if index == -1:
@@ -1248,6 +1251,9 @@ class MainWindow(QWidget):
 			self.currentpage = 1
 		elif self.currentpage > total_page:
 			self.currentpage = total_page
+			
+		if df_length % 100 == 0 and self.currentpage == total_page:
+			self.currentpage = self.currentpage - 1
 			
 		if total_page != 0:
 			df_head = (self.currentpage - 1) * page_counts
@@ -1286,7 +1292,7 @@ class MainWindow(QWidget):
 				</tr>
 				<tr>
 					<th>{{ Date }}</th>
-					<th>{{ space }}</th>
+					<th>{{ Edit }}</th>
 					<th>{{ FSpecial1 }}</th>
 					<th>{{ FSpecial2 }}</th>
 					<th>{{ Formation }}</th>
@@ -1313,7 +1319,7 @@ class MainWindow(QWidget):
 			if pd.isnull(df_img.iloc[num,18]):
 				link_word = ''
 			else:
-				link_word = '<a href="img--' + str(df_img.iloc[num,18]) + '">素材</a>'
+				link_word = '<a href="img--' + str(df_img.iloc[num,18]) + '">战报</a>'
 				
 			if pd.isnull(df_img.iloc[num,19]):
 				bv_word = ''
@@ -1333,6 +1339,8 @@ class MainWindow(QWidget):
 			
 			plana_query_url = '<a href="' + str(plana_query_list) + '">超级普拉查询</a>'
 			arona_query_url = '<a href="' + str(arona_query_list) + '">什亭之匣查询</a>'
+			
+			edit_url = "edit--" + str(df_img.index[num])
 			
 			query_word = '<br>' + plana_query_url + '<br><br>' + arona_query_url
 			
@@ -1358,7 +1366,8 @@ class MainWindow(QWidget):
 				Query_word = query_word,
 				Me = '<br><br>' + '我的阵容',
 				Note = note_word,
-				space = ''
+				space = '',
+				Edit = '<br><a href="' + str(edit_url) + '">修改</a>'
 			)
 			self.content.append(html_data)
 			self.content.append('\n')
@@ -1370,12 +1379,32 @@ class MainWindow(QWidget):
 		list = url.toString().split('--')
 		if list[0] == 'plana':
 			webbrowser.open("http://plana.ink/app_exact_query?attack1="+ list[1] +"&attack2="+ list[2] +"&attack3="+ list[3] +"&attack4="+ list[4] +"&special1=&special2=&filename=" + list[5])
+		
 		elif list[0] == 'userId':
 			self.get_id(list[1])
+		
 		elif list[0] == 'bili':
 			webbrowser.open(list[1])
+		
 		elif list[0] == 'img':
 			os.startfile(list[1])
+		
+		elif list[0] == 'edit':
+			df = pd.read_csv(self.fname)
+			row = int(list[1])
+			record_list = df.iloc[row]
+			print(record_list)
+			battle_list = [record_list[0], record_list[9], record_list[10], record_list[11], record_list[12], record_list[13], record_list[14], record_list[2], record_list[3], record_list[4], record_list[5], record_list[6], record_list[7], record_list[15], record_list[8], record_list[16], record_list[17], record_list[18],record_list[19]]
+			
+			method = 'manual'
+			print("-----")
+			print("index: " + list[1])
+			
+			confirm_dialog = ConfirmDialog()
+			self.signal_setbattlelist.emit(battle_list, self.fname, method, row)
+			if confirm_dialog.exec() == QDialog.Accepted:
+				pass
+				
 		elif list[0] == 'arona':
 			sc_list = [] 
 			id_list = []
@@ -1386,10 +1415,13 @@ class MainWindow(QWidget):
 				id = pn_utils.sc_to_id(item)
 				id_list.append(id)
 		
+			headers = {	
+						"Content-Type":"application/json", 
+						"Authorization":ba_token
+					}
 			
-			headers = {"Content-Type": "application/json", "Authorization":ba_token}
-			
-			post_dict = {	"season":self.query_filename,
+			post_dict = {	
+							"season":self.query_filename,
 							"queryType":0,
 							"matchType":0,
 							"list":[
@@ -1482,16 +1514,11 @@ class MainWindow(QWidget):
 				f.close()		
 		
 	def upload_table(self, event):
-		if self.fname == '' :
-			the_dialog = NoCsvOpenDialog()
-			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
-				pass
-		else:
-			upload_dialog = UploadDialog()
-			file_path = str(self.fname)
-			self.signal_filename.emit(file_path)
-			if upload_dialog.exec() == QDialog.Accepted:
-				pass
+		upload_dialog = UploadDialog()
+		file_path = str(self.fname)
+		self.signal_filename.emit(file_path)
+		if upload_dialog.exec() == QDialog.Accepted:
+			pass
 		
 	def read_csv(self, event):
 		fname_r, fpath= QFileDialog.getOpenFileName(self, '选择csv记录', './table', '*.csv')
@@ -2179,6 +2206,7 @@ class ConfirmDialog(QDialog):
 		self.cf = configparser.ConfigParser()
 		self.cf.read("./conf.ini",encoding='utf-8')
 		self.last_filepath = self.cf.get("filepath","asset_path")
+		self.replace_row = -1
 		self.initUI()
 		window.signal_setbattlelist.connect(self.get_battlelist)
 		try:
@@ -2365,7 +2393,10 @@ class ConfirmDialog(QDialog):
 		
 		self.show()
 		
-	def get_battlelist(self, battle_list, file_name, method):
+	def get_battlelist(self, battle_list, file_name, method, replace = -1):
+		print(replace)
+		if replace != -1:
+			self.replace_row = replace
 		if len(battle_list) == 16:
 			self.lineEdit_user.setText(battle_list[0])
 			self.lineEdit_e1.setText(battle_list[1])
@@ -2386,7 +2417,7 @@ class ConfirmDialog(QDialog):
 		elif len(battle_list) == 19:
 			print('get:')
 			print(battle_list)
-			self.lineEdit_user.setText(battle_list[0])
+			self.lineEdit_user.setText(str(battle_list[0]))
 			self.lineEdit_e1.setText(pn_utils.code_to_sc(battle_list[1]))
 			self.lineEdit_e2.setText(pn_utils.code_to_sc(battle_list[2]))
 			self.lineEdit_e3.setText(pn_utils.code_to_sc(battle_list[3]))
@@ -2429,23 +2460,6 @@ class ConfirmDialog(QDialog):
 		with open('./conf.ini', 'w', encoding="utf-8") as configfile:
 			self.cf.write(configfile)
 		configfile.close()
-
-	def code_to_sc(self, stud):
-		if stud != '':
-			stud_dict = pd.read_json('./data/studstr_sc2code.json', typ='series')
-			for key, value in stud_dict.items():
-				if value == stud:
-					return key
-			return '1NoData'
-		else:
-			return '1NoData'
-			
-	def sc_to_code(self, stud, method):
-		if stud != '':
-			stud_dict = pd.read_json('./data/studstr_nickname2code.json', typ='series')
-			return stud_dict[stud]
-		else:
-			return '1NoData'
 				
 	def insert_table(self, event):
 		print('insert: ')
@@ -2483,12 +2497,25 @@ class ConfirmDialog(QDialog):
 		else:
 			formation = '进攻'
 		
-		with open(self.file_path, "a", encoding="utf-8", newline="") as f:
-			wf = csv.writer(f)
+		if self.replace_row == -1:
+			with open(self.file_path, "a", encoding="utf-8", newline="") as f:
+				wf = csv.writer(f)
+				new_data = [userId,date.toString("yyyy-MM-dd"),Fatk1,Fatk2,Fatk3,Fatk4,Fspl1,Fspl2,formation,Eatk1,Eatk2,Eatk3,Eatk4,Espl1,Espl2,result,note,title,link,bv,check]
+				wf.writerow(new_data)
+				f.close()
+		else:
+			with open(self.file_path, "r", encoding="utf-8", newline="") as f:
+				reader = csv.reader(f)
+				rows = list(reader)
+				
 			new_data = [userId,date.toString("yyyy-MM-dd"),Fatk1,Fatk2,Fatk3,Fatk4,Fspl1,Fspl2,formation,Eatk1,Eatk2,Eatk3,Eatk4,Espl1,Espl2,result,note,title,link,bv,check]
-			wf.writerow(new_data)
-			f.close()
-
+			rows[self.replace_row + 1] = new_data
+			
+			with open(self.file_path, "w", encoding="utf-8", newline="") as f:
+				wf = csv.writer(f)
+				wf.writerows(rows)
+				f.close()
+				
 	def paintEvent(self, event):		
 		painter = QPainter(self)
 		pixmap = QPixmap("./data/images/confirm.png")
@@ -2933,7 +2960,7 @@ class NewCsvDialog(QDialog):
 			shutil.copy(src_file, dst_folder)
 				
 class DeleteDialog(QDialog):
-	signal_setbattlelist = Signal(list,str,str)
+	signal_setbattlelist = Signal(list,str,str,int)
 	
 	def __init__(self):
 		super().__init__()
@@ -3002,7 +3029,7 @@ class DeleteDialog(QDialog):
 			btn_d = QPushButton('删除')
 			btn_d.setProperty('row', row)
 			btn_d.setProperty('column', 0)
-			btn_d.clicked.connect(self.on_button_clicked)		
+			btn_d.clicked.connect(self.delete_button_clicked)		
 			index = self.model.index(row, 0, QModelIndex())
 			self.tableView.setIndexWidget(index, btn_d)	
 			
@@ -3019,20 +3046,21 @@ class DeleteDialog(QDialog):
 		row = sender.property('row')
 		column = sender.property('column')
 		index = self.model.index(row, column, QModelIndex())
+		print(row)
 		df = pd.read_csv(self.fname)
 		
 		record_list = list(df.iloc[row])
 		battle_list = [record_list[0], record_list[9], record_list[10], record_list[11], record_list[12], record_list[13], record_list[14], record_list[2], record_list[3], record_list[4], record_list[5], record_list[6], record_list[7], record_list[15], record_list[8], record_list[16], record_list[17], record_list[18],record_list[19]]
 		print(battle_list)
 		method = 'manual'
-		self.delete_index.append(row)
+		#self.delete_index.append(row)
 		
 		confirm_dialog = ConfirmDialog()
-		self.signal_setbattlelist.emit(battle_list, self.fname, method)
+		self.signal_setbattlelist.emit(battle_list, self.fname, method, row)
 		if confirm_dialog.exec() == QDialog.Accepted:
 			pass
 		
-	def on_button_clicked(self, event):
+	def delete_button_clicked(self, event):
 		sender = self.sender()
 		row = sender.property('row')
 		column = sender.property('column')
@@ -3365,6 +3393,14 @@ class ADBDialog(QDialog):
 	def try_shell(self):
 		res_shell = subprocess.Popen([self.adb_path,"-s",self.adb_port,"shell"], encoding="utf-8",text=True, stdout=subprocess.PIPE)
 		print(res_shell.stdout)
+		print("尝试清空缓存……")
+		for filename in os.listdir(self.screenshots_cache_path):
+			file_path = os.path.join(self.screenshots_cache_path, filename)
+			if os.path.isfile(file_path) or os.path.islink(file_path):
+				os.unlink(file_path)
+			elif os.path.isdir(file_path):
+				shutil.rmtree(file_path)
+		
 		
 	def loop_screenshots(self):
 		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
@@ -3386,14 +3422,16 @@ class ADBDialog(QDialog):
 		if pixel_value3[0] < 97 or pixel_value3[0] > 107 or pixel_value3[1] < 234 or pixel_value3[1] > 244 or pixel_value3[2] < 248 or pixel_value3[2] > 258:
 			print("未检测出历史记录页")
 			return 1
-			
+		'''	
 		pixel_value4 = img1[200,1000].tolist()
 		#if pixel_value1 != [111, 104, 85, 255]:
 		print(pixel_value4)
 		if pixel_value4[0] < 106 or pixel_value4[0] > 116 or pixel_value4[1] < 99 or pixel_value4[1] > 109 or pixel_value4[2] < 80 or pixel_value4[2] > 90:
 			print("未检测出历史记录页")
 			return 1
-			
+		#国际服偶玛后不适配
+		'''	
+		
 		for i in range(int(self.lineEdit_count.text())-1, -1, -1):
 			subprocess.run([self.adb_path,"shell","input","tap","1422","388"],encoding="utf-8")
 			time.sleep(1)
@@ -3649,6 +3687,9 @@ class UploadDialog(QDialog):
 		super().__init__()
 		self.file_path = ''
 		self.method = ''
+		self.cf = configparser.ConfigParser()
+		self.cf.read("./conf.ini",encoding='utf-8')
+		self.query_filename = self.cf.get("filepath","query_filename")
 		self.initUI()
 		try:
 			window.sts_dialog.signal_battlelist.connect(self.get_battlelist)
@@ -3661,7 +3702,7 @@ class UploadDialog(QDialog):
 	
 	def initUI(self):
 		self.setFixedSize(600, 640)  
-		self.setWindowTitle('上传至什亭之匣（开发中不可用）')
+		self.setWindowTitle('上传至什亭之匣')
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
 		#self.setWindowFlags(Qt.WindowStaysOnTopHint)
 		
@@ -3858,19 +3899,22 @@ class UploadDialog(QDialog):
 		self.lineEdit_e6.setText(pn_utils.code_to_sc(battle_list[11]))
 		
 	def get_record(self):
-		Fatk1 = pn_utils.nickname_to_code(self.lineEdit_f1.text())
-		Fatk2 = pn_utils.nickname_to_code(self.lineEdit_f2.text())
-		Fatk3 = pn_utils.nickname_to_code(self.lineEdit_f3.text())
-		Fatk4 = pn_utils.nickname_to_code(self.lineEdit_f4.text())
-		Fspl1 = pn_utils.nickname_to_code(self.lineEdit_f5.text())
-		Fspl2 = pn_utils.nickname_to_code(self.lineEdit_f6.text())
-		Eatk1 = pn_utils.nickname_to_code(self.lineEdit_e1.text())
-		Eatk2 = pn_utils.nickname_to_code(self.lineEdit_e2.text())
-		Eatk3 = pn_utils.nickname_to_code(self.lineEdit_e3.text())
-		Eatk4 = pn_utils.nickname_to_code(self.lineEdit_e4.text())
-		Espl1 = pn_utils.nickname_to_code(self.lineEdit_e5.text())
-		Espl2 = pn_utils.nickname_to_code(self.lineEdit_e6.text())
+	
+		Fatk1 = pn_utils.sc_to_id(pn_utils.code_to_sc(pn_utils.nickname_to_code(self.lineEdit_f1.text())))
+		Fatk2 = pn_utils.sc_to_id(pn_utils.code_to_sc(pn_utils.nickname_to_code(self.lineEdit_f2.text())))
+		Fatk3 = pn_utils.sc_to_id(pn_utils.code_to_sc(pn_utils.nickname_to_code(self.lineEdit_f3.text())))
+		Fatk4 = pn_utils.sc_to_id(pn_utils.code_to_sc(pn_utils.nickname_to_code(self.lineEdit_f4.text())))
+		Fspl1 = pn_utils.sc_to_id(pn_utils.code_to_sc(pn_utils.nickname_to_code(self.lineEdit_f5.text())))
+		Fspl2 = pn_utils.sc_to_id(pn_utils.code_to_sc(pn_utils.nickname_to_code(self.lineEdit_f6.text())))
+		Eatk1 = pn_utils.sc_to_id(pn_utils.code_to_sc(pn_utils.nickname_to_code(self.lineEdit_e1.text())))
+		Eatk2 = pn_utils.sc_to_id(pn_utils.code_to_sc(pn_utils.nickname_to_code(self.lineEdit_e2.text())))
+		Eatk3 = pn_utils.sc_to_id(pn_utils.code_to_sc(pn_utils.nickname_to_code(self.lineEdit_e3.text())))
+		Eatk4 = pn_utils.sc_to_id(pn_utils.code_to_sc(pn_utils.nickname_to_code(self.lineEdit_e4.text())))
+		Espl1 = pn_utils.sc_to_id(pn_utils.code_to_sc(pn_utils.nickname_to_code(self.lineEdit_e5.text())))
+		Espl2 = pn_utils.sc_to_id(pn_utils.code_to_sc(pn_utils.nickname_to_code(self.lineEdit_e6.text())))
 		
+		F_list = [Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2]
+		E_list = [Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2]
 		'''
 		df = pd.read_csv(self.file_path)
 		if Fatk1 == '':
@@ -3951,10 +3995,56 @@ class UploadDialog(QDialog):
 		'''
 		
 		if self.lineEdit_title.text() == '':
-			title_word = self.lineEdit_f1.text() +'-'+ self.lineEdit_f2.text() +'-'+ self.lineEdit_f3.text() +'-'+ self.lineEdit_f4.text()
-			print(title_word)
+			title_word = self.lineEdit_e1.text() +'-'+ self.lineEdit_e2.text() +'-'+ self.lineEdit_e3.text() +'-'+ self.lineEdit_e4.text()
 		else:
-			print("功能开发中，敬请期待")
+			title_word = self.lineEdit_title.text()
+
+		headers = {	"Referer":"https://arona.icu", 
+					"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.160 Safari/537.36", 
+					"Content-Type":"application/json", 
+					"Authorization":ba_token
+					}
+		
+		attack_list = []
+		defend_list = []
+		
+		for index, attacker in enumerate(F_list):
+			if attacker != "":
+				attack_list.append({	
+										"studentId":int(attacker),
+										"starGrade":0,
+										"hasWeapon":0,
+										"slotIndex":index,
+										"squadType":"Main"
+									})
+									
+		for index, defender in enumerate(E_list):
+			if defender != "":
+				defend_list.append({	
+										"studentId":int(defender),
+										"starGrade":0,
+										"hasWeapon":0,
+										"slotIndex":index,
+										"squadType":"Main"
+									})	
+		
+		
+		post_dict = {	
+						"season":self.query_filename,
+						"title":title_word,
+						"remark":self.lineEdit_bv.text() + self.lineEdit_note.text(),
+						"attack":attack_list,
+						"defend":defend_list
+					}
+					
+		r_arona = requests.post("https://api.arona.icu/api/job/jjc/add", json = post_dict, headers = headers)
+		print(r_arona.status_code)
+		if r_arona.status_code < 400:
+			arona_res_dict = json.loads(s=r_arona.text)
+			print(arona_res_dict)
+		else:
+			print("连接异常")
+		
 		self.close()
 	
 	def cal_winrate(self, res):
