@@ -11,6 +11,7 @@ print("算术逻辑载入中……")
 import numpy as np
 import pandas as pd
 print("存取模块载入中……")
+import copy
 import shutil
 import configparser
 import csv
@@ -48,7 +49,7 @@ print("")
 url = os.path.dirname(os.path.abspath(__file__))
 web_url = 'http://plana.ink'
 os.environ["QT_FONT_DPI"] = "96"
-ba_token = "ba-token xx:xx" 
+ba_token = "xx:xx" 
 
 widgets = None
 
@@ -72,11 +73,13 @@ class MainWindow(QWidget):
 		self.query_filename  = self.cf.get("filepath","query_filename")
 		self.server_la = self.cf.get("server","server_la")
 		self.sc_screenpath = self.cf.get("filepath","sc_screenpath")
+		if self.server_la == 'SC':
+			self.ocr = PaddleOCR(lang="ch", use_angle_cls=False, show_log=False)
 		self.initUI()
 
 	def initUI(self):
 		self.resize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.5.2')
+		self.setWindowTitle('普拉娜的笔记本 v1.5.6')
 		#self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.setAcceptDrops(True)			
 		
@@ -95,10 +98,12 @@ class MainWindow(QWidget):
 		self.btnQuery = QPushButton('精确查询',self)
 		self.btnUpload = QPushButton('上传对策至什亭之匣',self)
 		self.btnWatcher = QPushButton('截图监听',self)
-		self.btnADB = QPushButton('自动翻表',self)
+		self.btnADB = QPushButton('自动化工具',self)
 		self.btnNodata = QPushButton('空缺值统计',self)
-		self.btnSts = QPushButton('高胜率统计',self)
+		self.btnSts = QPushButton('胜率统计',self)
+		self.btnUserSts = QPushButton('对手统计',self)
 		self.btnAlice = QPushButton('从JSON文件导入记录',self)
+		self.btnSummary = QPushButton('赛季记录总结',self)
 		self.btnHelp = QPushButton('使用帮助',self)
 		self.btnSetting = QPushButton('设置',self)
 		self.btnSC = QRadioButton("简体中文")
@@ -154,6 +159,11 @@ class MainWindow(QWidget):
 		MidLayout4 = QHBoxLayout()
 		MidLayout4.addWidget(self.btnNodata)
 		MidLayout4.addWidget(self.btnSts)
+		MidLayout4.addWidget(self.btnUserSts)
+		
+		MidLayout5 = QHBoxLayout()
+		MidLayout5.addWidget(self.btnAlice)
+		MidLayout5.addWidget(self.btnSummary)
 	
 		RBLayout = QHBoxLayout()
 		RBLayout.addWidget(self.btnSC)
@@ -170,7 +180,7 @@ class MainWindow(QWidget):
 		grid.addWidget(self.btnUpload,7,1,1,1)
 		grid.addLayout(MidLayout3,8,1,1,1)
 		grid.addLayout(MidLayout4,9,1,1,1)
-		grid.addWidget(self.btnAlice,10,1,1,1)
+		grid.addLayout(MidLayout5,10,1,1,1)
 		grid.addLayout(RBLayout,12,1,1,1)
 		grid.addLayout(MidLayout2,13,1,1,1)
 		grid.addWidget(self.btnAbout,14,1,1,1)
@@ -193,11 +203,13 @@ class MainWindow(QWidget):
 		self.btnADB.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnNodata.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnSts.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnUserSts.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnAlice.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnHelp.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnSetting.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnUppage.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnDownpage.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnSummary.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.lineEdit_page.setFixedSize(40,30)
 		self.lineEdit_page.setStyleSheet("QLineEdit { text-align: center; }")
 		self.btnJumppage.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
@@ -222,6 +234,7 @@ class MainWindow(QWidget):
 		self.btnWatcher.clicked.connect(self.start_watch)
 		self.btnADB.clicked.connect(self.start_ADB)
 		self.btnSts.clicked.connect(self.start_Sts)
+		self.btnUserSts.clicked.connect(self.start_UserSts)
 		self.btnNew.clicked.connect(self.new_table)
 		self.btnSC.toggled.connect(self.SC_select)
 		self.btnTC.toggled.connect(self.TC_select)
@@ -233,10 +246,10 @@ class MainWindow(QWidget):
 		self.btnDownpage.clicked.connect(self.down_page)
 		self.btnJumppage.clicked.connect(self.jump_page)
 		self.btnNodata.clicked.connect(self.query_nan)
+		self.btnSummary.clicked.connect(self.table_summary)
 		
 		
 		self.content.append("欢迎回来")
-		#self.content.append("请确保本软件路径、截图保存路径等仅存在英文字符哦。")
 		self.show()
 		
 	def JP_select(self, event):
@@ -417,6 +430,22 @@ class MainWindow(QWidget):
 					if bulk_dialog.exec() == QDialog.Accepted:
 						pass
 				
+	def patch_ocr_sc(self, img):
+		try:
+			res0 = ''
+			result0 = self.ocr(img)
+			#print(result0)
+			if result0[1] == []:
+				result = ''
+			else:
+				for i in range(len(result0[1])):
+					res0 = res0 + result0[1][i][0]
+					result = ''.join(i for i in res0 if i.isalnum())
+		except: 
+			result = ''
+		finally: 
+			return result
+	
 	def ocr_jp(self, file_path, img_path, isBulk):
 		print('record: ' + file_path)
 		print('img: ' + img_path)
@@ -426,7 +455,7 @@ class MainWindow(QWidget):
 			print("invaild csv path!")
 		else:
 			ocr = PaddleOCR(use_angle_cls=True, lang="japan", show_log=False)
-			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_COLOR)
 			cv2.rectangle(img, (1800,790),(1000,870),(216,225,256), -1)
 			#cv2.rectangle(img, (140,790),(810,870),(246,247,247), -1)
 			cv2.rectangle(img, (1480,250),(1570,300),(216,225,256), -1)
@@ -706,7 +735,7 @@ class MainWindow(QWidget):
 			table_engine = PPStructure(show_log=False, table=True, image_orientation=False,)
 			print("ocr is running.")
 						
-			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_COLOR)
 			cv2.rectangle(img, (1800,790),(1000,870),(216,225,256), -1)
 			cv2.rectangle(img, (140,790),(810,870),(246,247,247), -1)
 			cv2.rectangle(img, (1480,250),(1560,300),(216,225,256), -1)
@@ -946,20 +975,40 @@ class MainWindow(QWidget):
 		elif(file_path == ''):
 			print("invaild csv path!")
 		else:
-			param = pd.read_json(self.sc_screenpath, typ='series')
-
-			table_engine = PPStructure(show_log=False, table=True, image_orientation=False,)
+			param = pd.read_json(self.sc_screenpath, typ='series')		
+			#table_engine = PPStructure(show_log=False, table=True, image_orientation=False,)
 			print("ocr is running.")
 						
 			#img = cv2.imread(img_path)
-			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+			#img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_COLOR)
 			cv2.rectangle(img, (int(param["cover0_x0"]),int(param["cover0_y0"])),(int(param["cover0_x1"]),int(param["cover0_y1"])),(int(param["cover_color_0b"]),int(param["cover_color_0g"]),int(param["cover_color_0r"])), -1)
 			cv2.rectangle(img, (int(param["cover1_x0"]),int(param["cover1_y0"])),(int(param["cover1_x1"]),int(param["cover1_y1"])),(int(param["cover_color_1b"]),int(param["cover_color_1g"]),int(param["cover_color_1r"])), -1)
 			cv2.rectangle(img, (int(param["cover2_x0"]),int(param["cover2_y0"])),(int(param["cover2_x1"]),int(param["cover2_y1"])),(int(param["cover_color_0b"]),int(param["cover_color_0g"]),int(param["cover_color_0r"])), -1)
 			cv2.rectangle(img, (int(param["cover3_x0"]),int(param["cover3_y0"])),(int(param["cover3_x1"]),int(param["cover3_y1"])),(int(param["cover_color_0b"]),int(param["cover_color_0g"]),int(param["cover_color_0r"])), -1)
+			cv2.line(img, (int(param["line1_x1"]), int(param["line1_y"])), (int(param["line1_x2"]), int(param["line1_y"])), (64, 64, 64), 2)
 			#cv2.imshow("0", img);
 			
-			img1 = img[int(param["E_box_y0"]):int(param["E_box_y1"]),int(param["E_box_x0"]):int(param["E_box_x1"])]
+			img1 = img[int(param["E_box_y0"]):int(param["E_box_y1"]),int(param["E_box_x0"]):int(param["E_box_x1"])]		
+			res_patch1 = self.patch_ocr_sc(img1)
+			
+			img2 = img[int(param["E_box_y0"]):int(param["E_box_y1"]),int(param["E_box_x1"]):int(param["E_box_x2"])]		
+			res_patch2 = self.patch_ocr_sc(img2)
+			
+			img3 = img[int(param["E_box_y0"]):int(param["E_box_y1"]),int(param["E_box_x2"]):int(param["E_box_x3"])]		
+			res_patch3 = self.patch_ocr_sc(img3)
+			
+			img4 = img[int(param["E_box_y0"]):int(param["E_box_y1"]),int(param["E_box_x3"]):int(param["E_box_x4"])]		
+			res_patch4 = self.patch_ocr_sc(img4)
+			
+			img5 = img[int(param["E_box_y0"]):int(param["E_box_y1"]),int(param["E_box_x4"]):int(param["E_box_x5"])]		
+			res_patch5 = self.patch_ocr_sc(img5)
+			
+			img6 = img[int(param["E_box_y0"]):int(param["E_box_y1"]),int(param["E_box_x5"]):int(param["E_box_x6"])]		
+			res_patch6 = self.patch_ocr_sc(img6)
+			
+			
+			'''
 			result1 = table_engine(img1)
 			
 			try:
@@ -997,13 +1046,14 @@ class MainWindow(QWidget):
 				new_res5 = ''.join(i for i in res5 if i.isalnum())
 			except IndexError: 
 				new_res5 = ''
+			'''
 			
-			w_res0 = pn_utils.scocr_to_sc(new_res0)
-			w_res1 = pn_utils.scocr_to_sc(new_res1)
-			w_res2 = pn_utils.scocr_to_sc(new_res2)
-			w_res3 = pn_utils.scocr_to_sc(new_res3)
-			w_res4 = pn_utils.scocr_to_sc(new_res4)
-			w_res5 = pn_utils.scocr_to_sc(new_res5)
+			w_res0 = pn_utils.scocr_to_sc(res_patch1)
+			w_res1 = pn_utils.scocr_to_sc(res_patch2)
+			w_res2 = pn_utils.scocr_to_sc(res_patch3)
+			w_res3 = pn_utils.scocr_to_sc(res_patch4)
+			w_res4 = pn_utils.scocr_to_sc(res_patch5)
+			w_res5 = pn_utils.scocr_to_sc(res_patch6)
 			
 			Eatk1 = ''
 			Eatk2 = ''
@@ -1047,22 +1097,40 @@ class MainWindow(QWidget):
 				Espl1 = w_res4
 				Espl2 = w_res5				
 			
-			print(new_res0+' '+new_res1+' '+new_res2+' '+new_res3+' '+new_res4+' '+new_res5)
+			print(res_patch1+' '+res_patch2+' '+res_patch3+' '+res_patch4+' '+res_patch5+' '+res_patch6)
 			
-			img2 = img[int(param["id_y0"]):int(param["id_y1"]),int(param["id_x0"]):int(param["id_x1"])]
+			img_name = img[int(param["id_y0"]):int(param["id_y1"]),int(param["id_x0"]):int(param["id_x1"])]
+			user_id = self.patch_ocr_sc(img_name)
+			
+			'''
 			result2 = table_engine(img2)
-
 			try:
 				res6 = str(result2[0]['res'][0]['text'])
 				new_res6 = ''.join(i for i in res6 if i.isalnum())
 			except IndexError: 
 				new_res6 = ''
 			print(new_res6)
+			'''
 			
+			my_img1 = img[int(param["F_box_y0"]):int(param["F_box_y1"]),int(param["F_box_x0"]):int(param["F_box_x1"])]
+			my_res_patch1 = self.patch_ocr_sc(my_img1)
 			
-			img3 = img[int(param["F_box_y0"]):int(param["F_box_y1"]),int(param["F_box_x0"]):int(param["F_box_x1"])]
-			result3 = table_engine(img3)
+			my_img2 = img[int(param["F_box_y0"]):int(param["F_box_y1"]),int(param["F_box_x1"]):int(param["F_box_x2"])]
+			my_res_patch2 = self.patch_ocr_sc(my_img2)
 			
+			my_img3 = img[int(param["F_box_y0"]):int(param["F_box_y1"]),int(param["F_box_x2"]):int(param["F_box_x3"])]
+			my_res_patch3 = self.patch_ocr_sc(my_img3)
+			
+			my_img4 = img[int(param["F_box_y0"]):int(param["F_box_y1"]),int(param["F_box_x3"]):int(param["F_box_x4"])]
+			my_res_patch4 = self.patch_ocr_sc(my_img4)
+			
+			my_img5 = img[int(param["F_box_y0"]):int(param["F_box_y1"]),int(param["F_box_x4"]):int(param["F_box_x5"])]
+			my_res_patch5 = self.patch_ocr_sc(my_img5)
+			
+			my_img6 = img[int(param["F_box_y0"]):int(param["F_box_y1"]),int(param["F_box_x5"]):int(param["F_box_x6"])]
+			my_res_patch6 = self.patch_ocr_sc(my_img6)
+			
+			'''
 			try:
 				my_res0 = str(result3[0]['res'][0]['text'])
 				my_new_res0 = ''.join(i for i in my_res0 if i.isalnum())
@@ -1098,15 +1166,16 @@ class MainWindow(QWidget):
 				my_new_res5 = ''.join(i for i in my_res5 if i.isalnum())
 			except IndexError: 
 				my_new_res5 = ''
+			'''
 			
-			print(my_new_res0+' '+my_new_res1+' '+my_new_res2+' '+my_new_res3+' '+my_new_res4+' '+my_new_res5)
+			print(my_res_patch1+' '+my_res_patch2+' '+my_res_patch3+' '+my_res_patch4+' '+my_res_patch5+' '+my_res_patch6)
 			
-			my_w_res0 = pn_utils.scocr_to_sc(my_new_res0)
-			my_w_res1 = pn_utils.scocr_to_sc(my_new_res1)
-			my_w_res2 = pn_utils.scocr_to_sc(my_new_res2)
-			my_w_res3 = pn_utils.scocr_to_sc(my_new_res3)
-			my_w_res4 = pn_utils.scocr_to_sc(my_new_res4)
-			my_w_res5 = pn_utils.scocr_to_sc(my_new_res5)
+			my_w_res0 = pn_utils.scocr_to_sc(my_res_patch1)
+			my_w_res1 = pn_utils.scocr_to_sc(my_res_patch2)
+			my_w_res2 = pn_utils.scocr_to_sc(my_res_patch3)
+			my_w_res3 = pn_utils.scocr_to_sc(my_res_patch4)
+			my_w_res4 = pn_utils.scocr_to_sc(my_res_patch5)
+			my_w_res5 = pn_utils.scocr_to_sc(my_res_patch6)
 			
 			Fatk1 = ''
 			Fatk2 = ''
@@ -1151,6 +1220,8 @@ class MainWindow(QWidget):
 				Fspl2 = my_w_res5
 			
 			pixel_value = img[int(param["wincolor_y"]),int(param["wincolor_x"])].tolist()
+			print("winflag: ")
+			print(pixel_value)
 			if pixel_value == [param["wincolor_b"],param["wincolor_g"],param["wincolor_r"]]:
 				battle_res = "胜利"
 			elif pixel_value[0]>param["wincolor_b"]-10 and pixel_value[0]<param["wincolor_b"]+10 and pixel_value[1]>param["wincolor_g"]-10 and pixel_value[1]<param["wincolor_g"]+10 and pixel_value[2]>param["wincolor_r"]-10 and pixel_value[2]<param["wincolor_r"]+10:
@@ -1160,6 +1231,8 @@ class MainWindow(QWidget):
 			print(battle_res)	
 
 			pixel_value_format = img[int(param["formatcolor_y"]),int(param["formatcolor_x"])].tolist()
+			print("atkflag: ")
+			print(pixel_value_format)
 			if pixel_value_format == [param["formatcolor_b"],param["formatcolor_g"],param["formatcolor_r"]]:
 				format = "进攻"
 			elif pixel_value_format[0]>param["formatcolor_b"]-10 and pixel_value_format[0]<param["formatcolor_b"]+10 and pixel_value_format[1]>param["formatcolor_g"]-10 and pixel_value_format[1]<param["formatcolor_g"]+10 and pixel_value_format[2]>param["formatcolor_r"]-10 and pixel_value_format[2]<param["formatcolor_r"]+10:
@@ -1168,7 +1241,7 @@ class MainWindow(QWidget):
 				format = "防守"
 			print(format)
 						
-			battle_list = [new_res6, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format, img_path]
+			battle_list = [user_id, Eatk1, Eatk2, Eatk3, Eatk4, Espl1, Espl2, Fatk1, Fatk2, Fatk3, Fatk4, Fspl1, Fspl2, battle_res, format, img_path]
 		
 			if isBulk:
 				self.insert_table(battle_list)
@@ -1271,11 +1344,21 @@ class MainWindow(QWidget):
 		<!doctype html>
 		<html lang="zh-CN">
 			<html>
-			<head></head>
+			<head>
+			<style>
+        body {
+        }
+        .transparent-table {
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 15px
+        }
+
+        </style>
+			</head>
 
 			<body>
 
-			<table border="0" width="785" align="center" style="background-color: rgba(255, 255, 255, 0.5);" >
+			<table class="transparent-table" width="785" align="center">
 				<tr>
 					<th colspan="9">{{ UserId }}</th>
 				</tr>
@@ -1373,9 +1456,9 @@ class MainWindow(QWidget):
 			self.content.append('\n')
 
 		self.content.anchorClicked.disconnect()
-		self.content.anchorClicked.connect(self.on_anchor_clicked)
+		self.content.anchorClicked.connect(self.showCsvLink_clicked)
 			
-	def on_anchor_clicked(self, url):
+	def showCsvLink_clicked(self, url):
 		list = url.toString().split('--')
 		if list[0] == 'plana':
 			webbrowser.open("http://plana.ink/app_exact_query?attack1="+ list[1] +"&attack2="+ list[2] +"&attack3="+ list[3] +"&attack4="+ list[4] +"&special1=&special2=&filename=" + list[5])
@@ -1499,7 +1582,8 @@ class MainWindow(QWidget):
 				link = battle_list[15]
 				img_str = battle_list[15].split('/')[-1]
 				if img_str[0:4] == 'MuMu':
-					date = img_str[7:11] + '-' + img_str[11:13] + '-' + img_str[13:15]
+					date_str = img_str.split('-')[1]
+					date = date_str[0:4] + '-' + date_str[4:6] + '-' + date_str[6:8]
 				img_dir = battle_list[15].split('/')[-2]
 				if img_dir == 'cache':
 					link = ''
@@ -1520,7 +1604,7 @@ class MainWindow(QWidget):
 		if upload_dialog.exec() == QDialog.Accepted:
 			pass
 		
-	def read_csv(self, event):
+	def read_csv(self, event, option = 1):
 		fname_r, fpath= QFileDialog.getOpenFileName(self, '选择csv记录', './table', '*.csv')
 		if fname_r == '' :
 			print(self.fname)
@@ -1540,16 +1624,18 @@ class MainWindow(QWidget):
 				df['Check'] = block_list
 				df.to_csv(self.fname, index=False)
 				print('The file format has been updated.')
-			
-			self.currentpage = -1
+				
 			self.content.clear()
 			df_img = df
 			self.df_output = df_img
-			self.show_csv(df_img)
-			winrate = '{:.2%}'.format(self.cal_winrate(df_img))
-			new_wr_word = ' 胜率：' + winrate + " （总数：" + str(len(df_img)) + "）"	
-			self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')
-			
+		
+			if option == 1:
+				self.currentpage = -1
+				self.show_csv(df_img)
+				winrate = '{:.2%}'.format(self.cal_winrate(df_img))
+				new_wr_word = ' 胜率：' + winrate + " （总数：" + str(len(df_img)) + "）"	
+				self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')	
+				
 	def refresh_table(self):
 		if self.fname == '' :
 			the_dialog = NoCsvOpenDialog()
@@ -1658,6 +1744,8 @@ class MainWindow(QWidget):
 
 	def paintEvent(self, event):		
 		painter = QPainter(self)
+		painter.setRenderHint(QPainter.SmoothPixmapTransform)
+		painter.setRenderHint(QPainter.Antialiasing)
 		if self.server_la == 'SC':
 			pixmap = QPixmap("./data/images/bg.png")
 		elif self.server_la == 'TC':
@@ -1836,14 +1924,15 @@ class MainWindow(QWidget):
 			res = df.query('EAttacker1 == @tag | EAttacker2 == @tag | EAttacker3 == @tag | EAttacker4 == @tag | ESpecial1 == @tag | ESpecial2 == @tag')
 			self.search_stu_e(res,e_namelist, e_namelist_length-1,wr_word1)	
 	
-	def cal_winrate(self, res):
+	def cal_winrate(self, res, isPrint = True):
 		try:
 			win_count = res['Result'].value_counts()['胜利']
 		except KeyError:
 			win_count = 0
 		total_count = len(res)
-		print('win: ' + str(win_count))
-		print('total: ' + str(total_count))
+		if isPrint == True:
+			print('win: ' + str(win_count))
+			print('total: ' + str(total_count))
 		if win_count == 0:
 			winrate = 0
 		else:
@@ -1908,7 +1997,7 @@ class MainWindow(QWidget):
 			file_path = str(self.fname)
 			
 			for img_path in img_names:
-				img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+				img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_COLOR)
 				height, width = img.shape[:2]
 				if height != 1080:
 					print("分辨率非法！")
@@ -2092,6 +2181,62 @@ class MainWindow(QWidget):
 			self.sts_dialog = StsDialog()
 			self.signal_filename.emit(self.fname)
 			self.sts_dialog.show()
+			
+	def start_UserSts(self, event):
+		if self.fname == '' :
+				the_dialog = NoCsvOpenDialog()
+				if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+					pass
+		else:
+			df = pd.read_csv(self.fname)
+			id_list = df['UserId'].iloc[::-1].drop_duplicates().tolist()
+			
+			idWithWinrate_list = []
+			for id in id_list:
+				userId = id
+				df_img = df.query('UserId == @userId')
+				winrate = '{:.2%}'.format(self.cal_winrate(df_img, isPrint = False))
+				idWithWinrate_list.append({
+                        'UserId': userId,
+						'LastDate': df_img.iloc[-1]['Date'][:10],
+                        'Winrate': winrate
+                    })
+			
+			print(idWithWinrate_list)
+			
+			self.content.clear()
+			for item in idWithWinrate_list:
+				self.content.append('\n')
+				template_string_data = '''
+					<!doctype html>
+					<html lang="zh-CN">
+						<html>
+						<head></head>
+
+						<body>
+
+						<table border="0" width="785" style="background-color: rgba(255, 255, 255, 0.5); font-size: 24px;" >
+							<tr>
+								<th align="right" width="385">{{ UserId }}</th>
+								<th align="right" width="180">{{ LastDate }}</th>
+								<th align="right" width="120">{{ Winrate }}</th>
+							</tr>
+						'''
+						
+				template_data = Template(template_string_data)
+				UserId_word = '<a href="userId--' + item['UserId'] + '">' + item['UserId'] + '</a>'
+				html_data = template_data.render(
+					UserId = UserId_word,
+					LastDate = item['LastDate'],			
+					Winrate = item['Winrate']
+					)
+				#print(UserId_word)
+				self.content.append(html_data)
+				
+
+			self.content.anchorClicked.disconnect()
+			self.content.anchorClicked.connect(self.showCsvLink_clicked)
+			
 
 	def show_settings(self, event):
 		settings_dialog = SettingsDialog()
@@ -2109,6 +2254,339 @@ class MainWindow(QWidget):
 			if alice_dialog.exec() == QDialog.Accepted:
 				pass
 
+	def table_summary(self, event):
+		if self.fname == '' :
+			the_dialog = NoCsvOpenDialog()
+			if the_dialog.exec() == NoCsvOpenDialog.Accepted:
+				pass
+		else:
+			sytle_str = '<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td>'
+			query_filename = self.cf.get("filepath","query_filename")
+			df = pd.read_csv(self.fname)
+			sts_total = len(df)
+			win_df = (df.iloc[:, 15] == "胜利")
+			win_count = (df.iloc[:, 15] == "胜利").sum()
+			winrate_total = win_count / sts_total
+			winrate_str = '{:.2%}'.format(winrate_total)
+			
+			F_cols = df.iloc[:, 2:8]
+			shun_count = (F_cols == "Shun").any(axis=1).sum()
+			shunrate_str = '{:.2%}'.format(shun_count / sts_total)
+			push_count = F_cols.isin(["Akane", "Tsurugi"]).any(axis=1).sum()
+			pushrate_str = '{:.2%}'.format(push_count / sts_total)
+			
+			Date = df.iloc[:, 1].str[:10]
+			date_frequency = Date.value_counts()
+			most_date_value = date_frequency.idxmax()
+			most_date_count = date_frequency.max()
+			
+			self.res_table = []
+			self.res_table1 = []
+			format = '进攻'
+			Df_atk = df.query('Formation == @format')
+			for index, row in Df_atk.iterrows():
+				if str(row["FSpecial1"]) < str(row["FSpecial2"]):
+					temp = Df_atk.loc[index, "FSpecial1"]
+					Df_atk.loc[index, "FSpecial1"] = Df_atk.loc[index, "FSpecial2"]
+					Df_atk.loc[index, "FSpecial2"] = temp
+				if str(row["ESpecial1"]) < str(row["ESpecial2"]):
+					temp = Df_atk.loc[index, "ESpecial1"]
+					Df_atk.loc[index, "ESpecial1"] = Df_atk.loc[index, "ESpecial2"]
+					Df_atk.loc[index, "ESpecial2"] = temp
+					
+			count_table = []
+			for index, row in df.iterrows():
+				count_row = [row["FAttacker1"],row["FAttacker2"],row["FAttacker3"],row["FAttacker4"],row["FSpecial1"],row["FSpecial2"],row["EAttacker1"],row["EAttacker2"],row["EAttacker3"],row["EAttacker4"],row["ESpecial1"],row["ESpecial2"],0,1]
+				if row["Result"] == '胜利':
+					count_row[-2] = 1
+				
+				if count_table == []:
+					count_table.append(count_row)	
+				else:
+					for i in range(len(count_table) + 1):
+						if i == len(count_table):
+							count_table.append(count_row)
+							break
+						if count_table[i][0:-2] == count_row[0:-2]:
+							count_table[i][-1] = count_table[i][-1] + count_row[-1]
+							count_table[i][-2] = count_table[i][-2] + count_row[-2]
+							break
+			
+			#print(count_table)
+			count_table1 = copy.deepcopy(count_table)
+			
+			for table_row in count_table:
+				winrate = table_row[-2]/table_row[-1]
+				if table_row[-1] >= 5:
+					table_row[-2] = winrate
+					self.res_table.append(table_row)
+			sorted_table = sorted(self.res_table, key=(lambda x:(x[-2], x[-1])),reverse=True)
+			
+			
+			for table_row1 in count_table1:
+				winrate = table_row1[-2]/table_row1[-1]
+				if table_row1[-1] >= 5:
+					table_row1[-2] = winrate
+					self.res_table1.append(table_row1)
+			sorted_table1 = sorted(self.res_table1, key=lambda x: (x[-2], -x[-1]))
+			
+			if sorted_table != []:
+				for item in sorted_table:
+					winrate = "{:.2%}".format(item[12])
+					upload_word = '<a href="' + item[0]+'--'+item[1]+'--'+item[2]+'--'+item[3]+'--'+item[4]+'--'+item[5]+'--'+item[6]+'--'+item[7]+'--'+item[8]+'--'+item[9]+'--'+item[10]+'--'+item[11]+ '">上传什亭之匣</a>'
+					
+					template_string_data = '''
+								<!doctype html>
+								<html lang="zh-CN">
+									<html>
+									<head></head>
+									<body>
+									
+									<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.8);" >
+
+										<tr>
+											<th>{{ FAttacker1 }}</th>
+											<th>{{ FAttacker2 }}</th>
+											<th>{{ FAttacker3 }}</th>
+											<th>{{ FAttacker4 }}</th>
+											<th>{{ Winrate }}</th>
+											<th>{{ EAttacker1 }}</th>
+											<th>{{ EAttacker2 }}</th>
+											<th>{{ EAttacker3 }}</th>
+											<th>{{ EAttacker4 }}</th>
+										</tr>
+										<tr>
+											<th>{{ space }}</th>
+											<th>{{ space }}</th>
+											<th>{{ FSpecial1 }}</th>
+											<th>{{ FSpecial2 }}</th>
+											<th>{{ Formation }}</th>
+											<th>{{ space }}</th>
+											<th>{{ Tolal }}</th>
+											<th>{{ ESpecial1 }}</th>
+											<th>{{ ESpecial2 }}</th>
+										</tr>
+
+										</body>
+									</html>
+									'''
+						
+					template_data = Template(template_string_data)
+					html_data = template_data.render(			
+						FAttacker1 = '<img src=' + './data/images/stud/' + item[0] + '.png width=80/>',
+						FAttacker2 = '<img src=' + './data/images/stud/' + item[1] + '.png width=80/>',
+						FAttacker3 = '<img src=' + './data/images/stud/' + item[2] + '.png width=80/>',
+						FAttacker4 = '<img src=' + './data/images/stud/' + item[3] + '.png width=80/>',
+						FSpecial1 = '<img src=' + './data/images/stud/' +  item[4] + '.png width=80/>',
+						FSpecial2 = '<img src=' + './data/images/stud/' +  item[5] + '.png width=80/>',
+						Formation = '<br><img src=' + './data/images/进攻.png width=40/>',
+						EAttacker1 = '<img src=' + './data/images/stud/' + item[6] + '.png width=80/>',
+						EAttacker2 = '<img src=' + './data/images/stud/' + item[7] + '.png width=80/>',
+						EAttacker3 = '<img src=' + './data/images/stud/' + item[8] + '.png width=80/>',
+						EAttacker4 = '<img src=' + './data/images/stud/' + item[9] + '.png width=80/>',
+						ESpecial1 = '<img src=' + './data/images/stud/' +  item[10] + '.png width=80/>',
+						ESpecial2 = '<img src=' + './data/images/stud/' +  item[11] + '.png width=80/>',
+						Winrate = '<h2>胜率<br>' + winrate + '</h2>',
+						Tolal = '<h2>总数<br>' + str(item[13]) + '</h2>',
+						Upload = '<br>' + upload_word,
+						space = ''
+					)
+					break
+			
+			if sorted_table1 != []:
+				for item in sorted_table1:
+					winrate = "{:.2%}".format(item[12])
+					upload_word = '<a href="' + item[0]+'--'+item[1]+'--'+item[2]+'--'+item[3]+'--'+item[4]+'--'+item[5]+'--'+item[6]+'--'+item[7]+'--'+item[8]+'--'+item[9]+'--'+item[10]+'--'+item[11]+ '">上传什亭之匣</a>'
+					
+					template_string_data = '''
+								<!doctype html>
+								<html lang="zh-CN">
+									<html>
+									<head></head>
+									<body>
+									
+									<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.8);" >
+
+										<tr>
+											<th>{{ FAttacker1 }}</th>
+											<th>{{ FAttacker2 }}</th>
+											<th>{{ FAttacker3 }}</th>
+											<th>{{ FAttacker4 }}</th>
+											<th>{{ Winrate }}</th>
+											<th>{{ EAttacker1 }}</th>
+											<th>{{ EAttacker2 }}</th>
+											<th>{{ EAttacker3 }}</th>
+											<th>{{ EAttacker4 }}</th>
+										</tr>
+										<tr>
+											<th>{{ space }}</th>
+											<th>{{ space }}</th>
+											<th>{{ FSpecial1 }}</th>
+											<th>{{ FSpecial2 }}</th>
+											<th>{{ Formation }}</th>
+											<th>{{ space }}</th>
+											<th>{{ Tolal }}</th>
+											<th>{{ ESpecial1 }}</th>
+											<th>{{ ESpecial2 }}</th>
+										</tr>
+
+										</body>
+									</html>
+									'''
+						
+					template_data = Template(template_string_data)
+					html_data1 = template_data.render(			
+						FAttacker1 = '<img src=' + './data/images/stud/' + item[0] + '.png width=80/>',
+						FAttacker2 = '<img src=' + './data/images/stud/' + item[1] + '.png width=80/>',
+						FAttacker3 = '<img src=' + './data/images/stud/' + item[2] + '.png width=80/>',
+						FAttacker4 = '<img src=' + './data/images/stud/' + item[3] + '.png width=80/>',
+						FSpecial1 = '<img src=' + './data/images/stud/' +  item[4] + '.png width=80/>',
+						FSpecial2 = '<img src=' + './data/images/stud/' +  item[5] + '.png width=80/>',
+						Formation = '<br><img src=' + './data/images/进攻.png width=40/>',
+						EAttacker1 = '<img src=' + './data/images/stud/' + item[6] + '.png width=80/>',
+						EAttacker2 = '<img src=' + './data/images/stud/' + item[7] + '.png width=80/>',
+						EAttacker3 = '<img src=' + './data/images/stud/' + item[8] + '.png width=80/>',
+						EAttacker4 = '<img src=' + './data/images/stud/' + item[9] + '.png width=80/>',
+						ESpecial1 = '<img src=' + './data/images/stud/' +  item[10] + '.png width=80/>',
+						ESpecial2 = '<img src=' + './data/images/stud/' +  item[11] + '.png width=80/>',
+						Winrate = '<h2>胜率<br>' + winrate + '</h2>',
+						Tolal = '<h2>总数<br>' + str(item[13]) + '</h2>',
+						Upload = '<br>' + upload_word,
+						space = ''
+					)
+					break
+			
+			self.content.clear()
+			self.content.append('\n')
+			self.content.append(sytle_str + '<font color="black"><h2>本赛季你参与了 ' + str(sts_total) + ' 次战术大赛，综合胜率为 ' + winrate_str + ' 。</h2></font>')
+			self.content.append(sytle_str + '<font color="black"><h2>在 ' + str(most_date_value) + ' ，你根了 ' + str(most_date_count) + ' 次，那天一定刻苦铭心。我根似泥！</h2></font><br>')
+			self.content.append(sytle_str + '<font color="black"><h2>其中你带大瞬参加了 ' + str(shun_count) + ' 场，携带率为 ' + shunrate_str + ' 。</h2></font>')
+			self.content.append(sytle_str + '<font color="black"><h2>你使用了 ' + str(push_count) + ' 次跑速，跑速率为 ' + pushrate_str + ' ，还记得开春时候的二三跑月吗？</h2></font><br>')
+			
+			id_value = df.iloc[:, 0].value_counts().idxmax()
+			id_count = df.iloc[:, 0].value_counts().max()
+			id_df = df[df.iloc[:, 0] == id_value]
+			id_wincount = (id_df.iloc[:, 15] == "胜利").sum()
+			id_str = '{:.2%}'.format(id_wincount / id_count)
+			idrate_str = '{:.2%}'.format(id_count / sts_total)
+			self.content.append(sytle_str + '<font color="black"><h2>你的最佳场友是 ' +id_value+ ' 。你们互肘了 ' + str(id_count) + ' 次，占比 ' + idrate_str + ' ，综合胜率 ' + id_str + ' 。</h2></font>')
+			if query_filename == "S5":	
+				self.content.append(sytle_str + '<font color="black"><h2>在有两个大球的田径场上，还有机会相遇吗？你现在又在哪里？。</h2></font><br>')
+			
+			if sorted_table != []:
+				self.content.append(sytle_str + '<font color="black"><h2>你的季度最佳阵容为：</h2></font>')
+				self.content.append(html_data)
+			if sorted_table1 != []:
+				self.content.append('<br><br>' + sytle_str + '<font color="black"><h2>同样的，你也发现了小众无敌防守：</h2></font>')
+				self.content.append(html_data1)
+			
+			if query_filename == "S5":	
+				self.content.append("<br>")
+				Mutsuki_df = df.iloc[:, 2:8].isin(["Mutsuki(NY)"]).any(axis=1)
+				Mutsuki_count = Mutsuki_df.sum()
+				Mutsuki_wincount = (Mutsuki_df & win_df).sum()
+				Mutsuki_str = '{:.2%}'.format(Mutsuki_wincount / Mutsuki_count)
+				Mutsukirate_str = '{:.2%}'.format(Mutsuki_count / sts_total)
+				self.content.append(sytle_str + '<font color="black"><h2>春月上场 ' + str(Mutsuki_count) + '次，携带率 ' + Mutsukirate_str + ' ，综合胜率 ' + Mutsuki_str + ' 。</h2></font>')
+				
+				Haruna_df = df.iloc[:, 2:8].isin(["Haruna(NY)"]).any(axis=1)
+				Haruna_count = Haruna_df.sum()
+				Haruna_wincount = (Haruna_df & win_df).sum()
+				Haruna_str = '{:.2%}'.format(Haruna_wincount / Haruna_count)
+				Harunarate_str = '{:.2%}'.format(Haruna_count / sts_total)
+				self.content.append(sytle_str + '<font color="black"><h2>春奈上场 ' + str(Haruna_count) + '次，携带率 ' + Harunarate_str + ' ，综合胜率 ' + Haruna_str + ' 。</h2></font>')
+				self.content.append(sytle_str + '<font color="black"><h2>你自认为是月批还奈批？</h2></font><br>')
+				
+				
+				Hina_df = df.iloc[:, 2:8].isin(["Hina(SS)"]).any(axis=1)
+				Hina_count = Hina_df.sum()
+				Hina_wincount = (Hina_df & win_df).sum()
+				if Hina_count == 0:
+					Hina_str = '0'
+				else:
+					Hina_str = '{:.2%}'.format(Hina_wincount / Hina_count)
+				Hinarate_str = '{:.2%}'.format(Hina_count / sts_total)
+				self.content.append(sytle_str + '<font color="black"><h2>水日奈上场 ' + str(Hina_count) + '次，携带率 ' + Hinarate_str + ' ，综合胜率 ' + Hina_str + ' 。</h2></font>')
+				
+				Iori_df = df.iloc[:, 2:8].isin(["Iori(SS)"]).any(axis=1)
+				Iori_count = Iori_df.sum()
+				Iori_wincount = (Iori_df & win_df).sum()
+				if Iori_count == 0:
+					Iori_str = '0'
+				else:
+					Iori_str = '{:.2%}'.format(Iori_wincount / Iori_count)
+				Iorirate_str = '{:.2%}'.format(Iori_count / sts_total)
+				self.content.append(sytle_str + '<font color="black"><h2>水佐仓上场 ' + str(Iori_count) + '次，携带率 ' + Iorirate_str + ' ，综合胜率 ' + Iori_str + ' 。</h2></font>')
+				self.content.append(sytle_str + '<font color="black"><h2>你是先抽了谁，又井了谁呢？</h2></font><br>')
+				
+				Hibiki_count = df.iloc[:, 2:8].isin(["Hibiki"]).any(axis=1).sum()
+				Nagisa_count = df.iloc[:, 2:8].isin(["Nagisa"]).any(axis=1).sum()
+				Yuzu_count = df.iloc[:, 2:8].isin(["Yuzu(MD)"]).any(axis=1).sum()
+				Miyu_count = df.iloc[:, 2:8].isin(["Miyu(SS)"]).any(axis=1).sum()
+				Minori_count = df.iloc[:, 2:8].isin(["Minori"]).any(axis=1).sum()
+				self.content.append(sytle_str + '<font color="black"><h2>在诸多后排爆发AOE中，响上场 ' +str(Hibiki_count)+ ' 次，渚上场 ' +str(Nagisa_count)+ ' 次，箱柚上场 ' +str(Yuzu_count)+ ' 次，水美游上场 ' +str(Miyu_count)+ ' 次，工头上场 ' + str(Minori_count) +' 次。</h2></font>')
+				self.content.append(sytle_str + '<font color="black"><h2>谁是你的首选？</h2></font><br>')
+				
+				self.content.append(sytle_str + '<font color="black"><h2>提到后排，</h2></font>')
+				Ayane_df = df.iloc[:, 2:8].isin(["Ayane(SS)"]).any(axis=1)
+				Ayane_count = Ayane_df.sum()
+				Ayane_wincount = (Ayane_df & win_df).sum()
+				if Ayane_count == 0:
+					Ayane_str = '0'
+				else:
+					Ayane_str = '{:.2%}'.format(Ayane_wincount / Ayane_count)
+				Ayanerate_str = '{:.2%}'.format(Ayane_count / sts_total)
+				self.content.append(sytle_str + '<font color="black"><h2>直升机上场 ' + str(Ayane_count) + '次，携带率 ' + Ayanerate_str + ' ，综合胜率 ' + Ayane_str + ' 。</h2></font>')
+				
+				Mashiro_df = df.iloc[:, 2:8].isin(["Mashiro"]).any(axis=1)
+				Mashiro_count = Mashiro_df.sum()
+				Mashiro_wincount = (Mashiro_df & win_df).sum()
+				if Mashiro_count == 0:
+					Mashiro_str = '0'
+				else:
+					Mashiro_str = '{:.2%}'.format(Mashiro_wincount / Mashiro_count)
+				Mashirorate_str = '{:.2%}'.format(Mashiro_count / sts_total)
+				self.content.append(sytle_str + '<font color="black"><h2>真白上场 ' + str(Mashiro_count) + '次，携带率 ' + Mashirorate_str + ' ，综合胜率 ' + Mashiro_str + ' 。</h2></font><br>')
+				
+				self.content.append(sytle_str + '<font color="black"><h2>水花实装以后，</h2></font>')
+				Hanako_df = df.iloc[:, 2:8].isin(["Hanako(SS)"]).any(axis=1)
+				Hanako_count = Hanako_df.sum()
+				Hanako_wincount = (Hanako_df & win_df).sum()
+				if Hanako_count == 0:
+					Hanako_str = '0'
+				else:
+					Hanako_str = '{:.2%}'.format(Hanako_wincount / Hanako_count)
+				Hanakorate_str = '{:.2%}'.format(Hanako_count / sts_total)
+				self.content.append(sytle_str + '<font color="black"><h2>上场 ' + str(Hanako_count) + '次，综合胜率 ' + Hanako_str + ' 。</h2></font><br>')
+				
+				Midori_df = df.iloc[:, 2:8].isin(["Midori"]).any(axis=1)
+				Midori_count = Midori_df.sum()
+				Midori_wincount = (Midori_df & win_df).sum()
+				if Midori_count == 0:
+					Midori_str = '0'
+				else:
+					Midori_str = '{:.2%}'.format(Midori_wincount / Midori_count)
+				Midorirate_str = '{:.2%}'.format(Midori_count / sts_total)
+				self.content.append(sytle_str + '<font color="black"><h2>小绿上场 ' + str(Midori_count) + '次，综合胜率 ' + Midori_str + ' 。还请记得别升T9压攻哦。</h2></font><br>')
+				
+				self.content.append(sytle_str + '<font color="black"><h2>最后是我们的S5明星学生——</h2></font>')
+				Megu_df = df.iloc[:, 2:8].isin(["Megu"]).any(axis=1)
+				Megu_count = Megu_df.sum()
+				Megu_wincount = (Megu_df & win_df).sum()
+				if Megu_count == 0:
+					Megu_str = '0'
+				else:
+					Megu_str = '{:.2%}'.format(Megu_wincount / Megu_count)
+				Megurate_str = '{:.2%}'.format(Megu_count / sts_total)
+				self.content.append(sytle_str + '<font color="black"><h2>大火龙登场 ' + str(Megu_count) + '次，携带率 ' + Megurate_str + ' ，综合胜率 ' + Megu_str + ' 。下次再见会是什么时候呢？</h2></font><br>')
+				
+				self.content.append(sytle_str + '<font color="#0F52BA"><h2><i>根批人生的核心在于赢，国服要赢，国际服也要赢，还有日服也不能输。</i></h2></font>')
+				self.content.append(sytle_str + '<font color="#0F52BA"><h2><i>水花要动得更快，水白也要点得更准。</i></h2></font>')
+				self.content.append(sytle_str + '<font color="#0F52BA"><h2><i>回击要及时，对策库要更全，死亡笔记要更智能。</i></h2></font>')
+				self.content.append(sytle_str + '<font color="#0F52BA"><h2><i>所有方面都不允许失败，要把第一成功搞到手，坚决不能弄丢。</i></h2></font>')
+				self.content.append(sytle_str + '<font color="#0F52BA"><h2><i>重点在于不停地根，不停地碎，像一场高烧，直到小团体完全追不上你。</i></h2></font>')
+
+				self.content.moveCursor(QTextCursor.Start)	
 	
 	''' old methods
 	def upload_table(self, event):
@@ -2394,7 +2872,6 @@ class ConfirmDialog(QDialog):
 		self.show()
 		
 	def get_battlelist(self, battle_list, file_name, method, replace = -1):
-		print(replace)
 		if replace != -1:
 			self.replace_row = replace
 		if len(battle_list) == 16:
@@ -2967,6 +3444,7 @@ class DeleteDialog(QDialog):
 		self.fname = ''
 		self.delete_index = []
 		window.signal_filename.connect(self.get_file_name)
+		self.reorder_flag = 0
 		self.initUI()
 		self.show()
 		
@@ -2976,14 +3454,17 @@ class DeleteDialog(QDialog):
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMinimizeButtonHint)
 		
 		self.btnOk = QPushButton('确认修改',self)
+		self.btnReorder = QPushButton('按时间重排',self)
 		self.btnOk.setProperty('class', 'danger')
 		self.btnOk.clicked.connect(self.delete_row)
 		self.btnOk.clicked.connect(self.close)
 		self.btnCancel = QPushButton('取消修改',self)
 		self.btnCancel.clicked.connect(self.close)
+		self.btnReorder.clicked.connect(self.reorder_button_clicked)
 		
 		self.btnCancel.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnOk.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnReorder.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		
 	def get_file_name(self, file_path):
 		print(file_path)
@@ -3017,6 +3498,7 @@ class DeleteDialog(QDialog):
 		
 		bottom_layout = QHBoxLayout()
 		bottom_layout.addStretch(1)
+		bottom_layout.addWidget(self.btnReorder)
 		bottom_layout.addWidget(self.btnCancel)
 		bottom_layout.addWidget(self.btnOk)
 
@@ -3074,6 +3556,19 @@ class DeleteDialog(QDialog):
 		print('Delete: ')
 		print(self.delete_index)	
 		df.drop(self.delete_index,inplace=True)
+		df.to_csv(self.fname,index=False,encoding="utf-8")
+		if self.reorder_flag == 1:
+			print("重排序。")
+			self.reorder_table()
+		
+	def	reorder_button_clicked(self):
+		self.btnReorder.setEnabled(False)
+		self.btnReorder.setText('待重排')
+		self.reorder_flag = 1
+		
+	def reorder_table(self):
+		df = pd.read_csv(self.fname)
+		df = df.sort_values(by=df.columns[1])
 		df.to_csv(self.fname,index=False,encoding="utf-8")
 		
 	def paintEvent(self, event):		
@@ -3345,32 +3840,38 @@ class ADBDialog(QDialog):
 		print(self.adb_path)
 	
 	def initUI(self):
+		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.resize(640, 460)  
 		self.setWindowTitle('自动读取作战记录')
 		self.setAcceptDrops(True)
 		
-		self.btnLink = QPushButton('连接',self)
+		self.btnTurnPage = QPushButton('自动翻表',self)
+		self.btnAutoGuide = QPushButton('自动教学',self)
 		self.lineEdit_count = QLineEdit(self)
-		self.label_count = QLabel('自动读取条数（建议小于10次）', self)
+		self.label_count = QLabel('执行次数', self)
 		self.content = QTextBrowser()
 		
 		grid = QGridLayout()
 		self.setLayout(grid)
 		vbox = QVBoxLayout()
 		
-		vbox.addWidget(self.btnLink)
+		vbox.addWidget(self.btnTurnPage)
+		vbox.addWidget(self.btnAutoGuide)
 		vbox.addWidget(self.label_count)
 		vbox.addWidget(self.lineEdit_count)
 		vbox.addStretch(1)
 		grid.addLayout(vbox,1,1,1,4)
 		grid.addWidget(self.content,1,5,1,1)
 		
-		self.btnLink.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnTurnPage.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnAutoGuide.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.lineEdit_count.setText("5")
 		
-		self.btnLink.clicked.connect(self.adb_link)
+		self.btnTurnPage.clicked.connect(self.adb_link1)
+		self.btnAutoGuide.clicked.connect(self.adb_link2)
 		
-		self.content.append("本功能用于自动向下翻阅对局历史，请将模拟器保持在对局记录页，将首条要保存的对局项完整地置于顶部，请勿仅显示一半。点击‘连接’开始翻阅，国服由于对局记录乱位慎用。\n")
+		self.content.append("自动翻表用于自动向下翻阅对局历史，请将模拟器保持在对局记录页，将首条要保存的对局项完整地置于顶部，请勿仅显示一半。点击‘连接’开始翻阅，国服由于对局记录乱位慎用。次数请勿超过10次。\n")
+		self.content.append("自动教学用于刷取教学-1。\n")
 		self.content.append("当前ADB路径：")
 		if self.adb_path != '':
 			self.content.append(self.adb_path +"\n")
@@ -3382,6 +3883,54 @@ class ADBDialog(QDialog):
 		
 	def get_file_name(self, file_path):
 		self.fname = file_path
+		
+	def isStandardResolution(self, height, width, img):
+		img_height, img_width = img.shape[:2]
+		if height != 1080:
+			print("分辨率非法！")
+			return 1
+		if width != 1920:
+			print("分辨率非法！")
+			return 1
+		return 0
+		
+	def isBattleComplete(self):
+		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		time.sleep(1)
+		subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
+		
+		pixel_value = img1[1000,1805].tolist()
+		print(pixel_value)
+		pixel_value1 = img1[52,270].tolist()
+		print(pixel_value1)
+		if self.isPixelValue(pixel_value, 255, 218, 111) == 1 or self.isPixelValue(pixel_value1, 90, 228, 255) == 1:
+			print("战斗未结束")
+			return 1
+		else:
+			print("战斗已结束")
+			return 0
+
+	def isPixelValue(self, colorlist, B, G, R, allowance = 5):
+		if colorlist[0] < B-allowance or colorlist[0] > B+allowance or colorlist[1] < G-allowance or colorlist[1] > G+allowance or colorlist[2] < R-allowance or colorlist[2] > R+allowance:
+			print("不满足颜色容差。")
+			return 1
+		else:
+			return 0
+			
+	def isHardMission(self):
+		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		time.sleep(1)
+		subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
+			
+		pixel_value = img1[250,1050].tolist()
+		if self.isPixelValue(pixel_value, 94, 74, 53) == 0:
+			print("普通本")
+			return 0
+		else:
+			print("困难本")
+			return 1			
 		
 	def try_connect(self):
 		res_connect = subprocess.run([self.adb_path,"connect",self.adb_port], encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3400,20 +3949,14 @@ class ADBDialog(QDialog):
 				os.unlink(file_path)
 			elif os.path.isdir(file_path):
 				shutil.rmtree(file_path)
-		
-		
+			
 	def loop_screenshots(self):
 		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
 		time.sleep(0.1)
 		subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
-		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
 		
-		height, width = img1.shape[:2]
-		if height != 1080:
-			print("分辨率非法！")
-			return 1
-		if width != 1920:
-			print("分辨率非法！")
+		if(self.isStandardResolution(1080, 1920, img1) == 1):
 			return 1
 		
 		pixel_value3 = img1[300,1000].tolist()
@@ -3438,7 +3981,7 @@ class ADBDialog(QDialog):
 			subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/"+str(i)+".png"],encoding="utf-8")
 			time.sleep(0.1)
 			subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/"+ str(i) +".png",self.screenshots_cache_path],encoding="utf-8")
-			img = cv2.imdecode(np.fromfile(self.screenshots_cache_path + str(i) +".png", dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+			img = cv2.imdecode(np.fromfile(self.screenshots_cache_path + str(i) +".png", dtype=np.uint8), cv2.IMREAD_COLOR)
 			
 			pixel_value1 = img[400,1600].tolist()
 			print(pixel_value1)
@@ -3458,7 +4001,7 @@ class ADBDialog(QDialog):
 			time.sleep(0.5)
 		return 0
 		
-	def adb_link(self,path):
+	def adb_link1(self,path):
 		self.content.append("尝试连接……")
 		
 		res_connect = self.try_connect()
@@ -3476,7 +4019,7 @@ class ADBDialog(QDialog):
 		if loop_res == 1:
 			self.content.append("异常中断")
 			return
-
+			
 	def save_record(self):
 		img_names = os.listdir(self.screenshots_cache_path)
 		abs_img_names = []
@@ -3491,6 +4034,203 @@ class ADBDialog(QDialog):
 			cv2.imwrite(abs_img_name, img_24bit)
 			
 		self.signal_setimglist.emit(abs_img_names)
+		
+	def adb_link2(self):
+		self.ocr = PaddleOCR(lang="ch", show_log=False)
+		self.content.append("尝试连接……")
+		
+		res_connect = self.try_connect()
+		if res_connect == 0:
+			self.content.append("连接成功")
+		else:
+			self.content.append("连接失败")
+			return
+			
+		self.try_shell()
+		if(self.back_homepage() == 1):
+			return 1
+		if(self.enter_campaign() == 1):
+			return 1
+		time.sleep(1)
+		if(self.enter_Mission() == 1):
+			return 1
+		if(self.isHardMission() == 1):
+			self.rapid_click(1200, 250, 2)
+		self.enter_MissionWithIndex(1)
+		
+		for i in range(int(self.lineEdit_count.text())):
+			print("执行轮次：第 " + str(i+1) + " 轮。")
+			self.swipe_MissionToTop()
+			if(self.enter_TR1() == 1):
+				return 1
+			time.sleep(2)
+			self.start_mobilize()
+			time.sleep(20)
+			self.rapid_click("1517","658",10)
+			time.sleep(4)
+			self.rapid_click("1517","658",8)
+			time.sleep(35)
+			if(self.isBattleComplete() == 1):
+				time.sleep(10)
+			self.rapid_click("1805","1000",5)
+			time.sleep(3)
+			self.rapid_click("1160","1000",5)
+			time.sleep(3)
+			print("第 " + str(i+1) + " 轮任务已完成。")
+		
+	def enter_TR1(self):
+		time.sleep(0.5)
+		subprocess.run([self.adb_path,"shell","input","tap","1670","515"],encoding="utf-8")
+		time.sleep(0.5)
+		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		time.sleep(1)
+		subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
+		pixel_value = img1[415,1300].tolist()
+		if self.isPixelValue(pixel_value, 255, 173, 0) == 1:
+			print(pixel_value)
+			print("终止！")
+			return 1
+		self.start_mission()
+		
+	def start_mission(self):
+		time.sleep(1)
+		subprocess.run([self.adb_path,"shell","input","tap","955","755"],encoding="utf-8")
+		
+	def start_mobilize(self):
+		time.sleep(0.5)
+		subprocess.run([self.adb_path,"shell","input","tap","1735","1000"],encoding="utf-8")
+		print("开始战斗。")
+	
+	def swipe_MissionToTop(self):
+		for i in range(3):
+			subprocess.run([self.adb_path,"shell","input","swipe","1200","500","1200","800","500"],encoding="utf-8")
+			time.sleep(0.2)
+
+	def enter_MissionWithIndex(self, target_index):
+		time.sleep(2)
+		current_index = int(self.get_MissionArea())
+		if current_index == target_index:
+			return 0
+		if current_index < target_index:
+			print("执行翻页。")
+			subprocess.run([self.adb_path,"shell","input","tap","1860","535"],encoding="utf-8")
+			self.enter_MissionWithIndex(target_index)
+		if current_index > target_index:
+			print("执行翻页。")
+			subprocess.run([self.adb_path,"shell","input","tap","50","535"],encoding="utf-8")
+			self.enter_MissionWithIndex(target_index)
+			
+	def rapid_click(self, x, y, counter):
+		for i in range(counter):
+			time.sleep(0.1)
+			subprocess.run([self.adb_path,"shell","input","tap",str(x), str(y)],encoding="utf-8")
+		
+	def get_MissionArea(self):
+		time.sleep(0.5)
+		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		time.sleep(1)
+		subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
+
+		img2 = img1[220:280,275:500]
+		area_str = self.patch_ocr_sc(img2)
+		print("目前位于： " + area_str)
+		area_index = ''.join(filter(str.isdigit, area_str)) 
+		return area_index
+		
+	def enter_Mission(self):
+		time.sleep(0.5)
+		subprocess.run([self.adb_path,"shell","input","tap","1200","350"],encoding="utf-8")
+		time.sleep(2)
+		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		time.sleep(1)
+		subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
+		
+		pixel_value = img1[210,150].tolist()
+		if (self.isPixelValue(pixel_value, 252, 250, 241) == 1):
+			self.content.append("进入任务区失败。")
+			print("进入任务区失败。")
+			return 1
+		else:
+			self.content.append("已进入任务区。")
+			print("已进入任务区。")
+			return 0
+		
+	def enter_campaign(self):
+		for i in range(4):
+			self.content.append(f"第 {i+1} 次尝试进入工作区，")
+			time.sleep(0.5)
+			subprocess.run([self.adb_path,"shell","input","tap","1800","850"],encoding="utf-8")
+			time.sleep(2)
+			subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+			time.sleep(1)
+			subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+			img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
+			
+			if(self.isStandardResolution(1080, 1920, img1) == 1):
+				return 1
+			
+			pixel_value_story = img1[400,1800].tolist()
+			print(pixel_value_story)
+			#if pixel_value_story != [171, 249, 249, 255]:	
+			if self.isPixelValue(pixel_value_story, 188, 246, 246) == 1:
+				self.content.append("进入工作区失败。")
+				print("进入工作区失败。")
+				continue
+			else:
+				self.content.append("已进入工作区。")
+				print("已进入工作区。")
+				return 0
+		return 1
+	
+	def back_homepage(self):
+		for i in range(5):
+			subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+			time.sleep(1)
+			subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+			img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
+			
+			if(self.isStandardResolution(1080, 1920, img1) == 1):
+				return 1
+			
+			pixel_value_top = img1[31,31].tolist()
+			print(pixel_value_top)
+			if pixel_value_top[0] < 108 or pixel_value_top[0] > 118 or pixel_value_top[1] < 57 or pixel_value_top[1] > 67 or pixel_value_top[2] < 5 or pixel_value_top[2] > 15:
+			#if pixel_value_top != [113, 62, 10, 255]:
+				self.content.append(f"第 {i+1} 次尝试，")
+				self.content.append("未检测到首页，尝试回到首页。")
+				print(f"第 {i+1} 次尝试，")
+				print("未检测到首页，尝试回到首页。")
+				subprocess.run([self.adb_path,"shell","input","tap","1850","35"],encoding="utf-8")
+				time.sleep(1)
+			else:
+				break
+		if i < 5:
+			self.content.append("回到首页。")
+			print("回到首页。")
+			return 0
+		else:
+			self.content.append("回到首页失败，程序终止。")
+			print("回到首页失败，程序终止。")
+			return 1
+	
+	def patch_ocr_sc(self, img):
+		try:
+			res0 = ''
+			result0 = self.ocr(img)	
+			#print(result0)
+			if result0[1] == []:
+				result = ''
+			else:
+				for i in range(len(result0[1])):
+					res0 = res0 + result0[1][i][0]
+					result = ''.join(i for i in res0 if i.isalnum())
+		except: 
+			result = ''
+		finally: 
+			return result	
 		
 	def paintEvent(self, event):		
 		painter = QPainter(self)
@@ -3514,6 +4254,7 @@ class WatcherDialog(QDialog):
 		self.initUI()
 		
 	def initUI(self):
+		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.resize(640, 460)  
 		self.setWindowTitle('监听新截图')
 		self.setAcceptDrops(True)
@@ -4073,18 +4814,21 @@ class StsDialog(QDialog):
 		super().__init__()
 		self.file_path = ''
 		self.res_table = []
+		self.res_table1 = []
 		self.min_counts = 10
 		self.min_winrate = 80
+		self.max_loserate = 30
 		self.cf = configparser.ConfigParser()
 		self.cf.read("./conf.ini",encoding='utf-8')
 		self.min_counts = self.cf.get("sts","min_counts")
 		self.min_winrate = self.cf.get("sts","min_winrate")
+		self.max_loserate = self.cf.get("sts","max_loserate")
 		window.signal_filename.connect(self.get_file_name)
 		self.initUI()
 		
 	def initUI(self):
 		self.resize(1280, 720)  
-		self.setWindowTitle('高胜率阵容统计结果')
+		self.setWindowTitle('统计结果')
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		
 		self.content = QTextBrowser()
@@ -4133,17 +4877,21 @@ class StsDialog(QDialog):
 						count_table[i][-2] = count_table[i][-2] + count_row[-2]
 						break
 		
+		#print(count_table)
+		count_table1 = copy.deepcopy(count_table)
+		
 		for table_row in count_table:
 			winrate = table_row[-2]/table_row[-1]
 			if table_row[-1] >= int(self.min_counts) and winrate >= int(self.min_winrate)/100:
 				table_row[-2] = winrate
 				self.res_table.append(table_row)
-				
 		sorted_table = sorted(self.res_table, key=(lambda x:x[-2]),reverse=True)
+		print(sorted_table)
+		
 		
 		self.content.clear()
 		self.content.append('\n')
-		self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h1>最小场次：' + self.min_counts + '&nbsp;&nbsp;最低胜率：' + self.min_winrate + '%</h1><br></font><br>')
+		self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h1>最小场次：' + self.min_counts + '&nbsp;&nbsp;特攻最低胜率：' + self.min_winrate + '%</h1><br></font><br>')
 		
 		for item in sorted_table:
 			winrate = "{:.2%}".format(item[12])
@@ -4209,6 +4957,84 @@ class StsDialog(QDialog):
 			)
 			self.content.append(html_data)
 			self.content.append('\n')
+			
+		self.content.append('\n')
+		self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h1>最小场次：' + self.min_counts + '&nbsp;&nbsp;特防最高胜率：' + self.max_loserate + '%</h1><br></font><br>')
+			
+			
+		for table_row1 in count_table1:
+			winrate = table_row1[-2]/table_row1[-1]
+			if table_row1[-1] >= int(self.min_counts) and winrate <= int(self.max_loserate)/100:
+				table_row1[-2] = winrate
+				self.res_table1.append(table_row1)
+		sorted_table1 = sorted(self.res_table1, key=(lambda x:x[-2]),reverse=False)
+		print(sorted_table1)
+		
+		for item in sorted_table1:
+			winrate = "{:.2%}".format(item[12])
+			upload_word = '<a href="' + item[0]+'--'+item[1]+'--'+item[2]+'--'+item[3]+'--'+item[4]+'--'+item[5]+'--'+item[6]+'--'+item[7]+'--'+item[8]+'--'+item[9]+'--'+item[10]+'--'+item[11]+ '">上传什亭之匣</a>'
+			
+			template_string_data = '''
+						<!doctype html>
+						<html lang="zh-CN">
+							<html>
+							<head></head>
+							<body>
+							
+							<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.8);" >
+
+								<tr>
+									<th>{{ FAttacker1 }}</th>
+									<th>{{ FAttacker2 }}</th>
+									<th>{{ FAttacker3 }}</th>
+									<th>{{ FAttacker4 }}</th>
+									<th>{{ Winrate }}</th>
+									<th>{{ EAttacker1 }}</th>
+									<th>{{ EAttacker2 }}</th>
+									<th>{{ EAttacker3 }}</th>
+									<th>{{ EAttacker4 }}</th>
+								</tr>
+								<tr>
+									<th>{{ space }}</th>
+									<th>{{ space }}</th>
+									<th>{{ FSpecial1 }}</th>
+									<th>{{ FSpecial2 }}</th>
+									<th>{{ Formation }}</th>
+									<th>{{ space }}</th>
+									<th>{{ Tolal }}</th>
+									<th>{{ ESpecial1 }}</th>
+									<th>{{ ESpecial2 }}</th>
+								</tr>
+
+								</body>
+							</html>
+							'''
+				
+			template_data = Template(template_string_data)
+			html_data = template_data.render(			
+				FAttacker1 = '<img src=' + './data/images/stud/' + item[0] + '.png width=80/>',
+				FAttacker2 = '<img src=' + './data/images/stud/' + item[1] + '.png width=80/>',
+				FAttacker3 = '<img src=' + './data/images/stud/' + item[2] + '.png width=80/>',
+				FAttacker4 = '<img src=' + './data/images/stud/' + item[3] + '.png width=80/>',
+				FSpecial1 = '<img src=' + './data/images/stud/' +  item[4] + '.png width=80/>',
+				FSpecial2 = '<img src=' + './data/images/stud/' +  item[5] + '.png width=80/>',
+				Formation = '<br><img src=' + './data/images/进攻.png width=40/>',
+				EAttacker1 = '<img src=' + './data/images/stud/' + item[6] + '.png width=80/>',
+				EAttacker2 = '<img src=' + './data/images/stud/' + item[7] + '.png width=80/>',
+				EAttacker3 = '<img src=' + './data/images/stud/' + item[8] + '.png width=80/>',
+				EAttacker4 = '<img src=' + './data/images/stud/' + item[9] + '.png width=80/>',
+				ESpecial1 = '<img src=' + './data/images/stud/' +  item[10] + '.png width=80/>',
+				ESpecial2 = '<img src=' + './data/images/stud/' +  item[11] + '.png width=80/>',
+				Winrate = '<h2>胜率<br>' + winrate + '</h2>',
+				Tolal = '<h2>总数<br>' + str(item[13]) + '</h2>',
+				Upload = '<br>' + upload_word,
+				Min_counts = self.min_counts,
+				Min_winrate = self.min_winrate,
+				space = ''
+			)
+			self.content.append(html_data)
+			self.content.append('\n')
+			
 			
 		self.content.moveCursor(QTextCursor.Start)	
 		self.content.anchorClicked.disconnect()

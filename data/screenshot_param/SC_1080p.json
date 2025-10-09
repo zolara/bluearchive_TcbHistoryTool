@@ -8,14 +8,14 @@
 	"cover_color_1r":247,
 	
 	"cover0_x0":1800,
-	"cover0_y0":790,
+	"cover0_y0":894,
 	"cover0_x1":1000,
-	"cover0_y1":870,
+	"cover0_y1":920,
 	
 	"cover1_x0":140,
-	"cover1_y0":790,
+	"cover1_y0":894,
 	"cover1_x1":810,
-	"cover1_y1":870,
+	"cover1_y1":920,
 	
 	"cover2_x0":1480,
 	"cover2_y0":250,
@@ -27,10 +27,15 @@
 	"cover3_x1":1830,
 	"cover3_y1":380,
 	
-	"E_box_x0":1000,
-	"E_box_x1":1800,
 	"E_box_y0":870,
-	"E_box_y1":900,
+	"E_box_y1":920,
+	"E_box_x0":1090,
+	"E_box_x1":1208,
+	"E_box_x2":1322,
+	"E_box_x3":1434,
+	"E_box_x4":1546,
+	"E_box_x5":1658,
+	"E_box_x6":1780,
 	
 	"Ecolor2_x":1265,
 	"Ecolor2_y":780,
@@ -41,15 +46,21 @@
 	"Ecolor5_x":1600,
 	"Ecolor5_y":780,
 	
-	"id_x0":1030,
+	"id_x0":1590,
 	"id_x1":1860,
 	"id_y0":230,
 	"id_y1":415,
 	
-	"F_box_x0":120,
-	"F_box_x1":820,
 	"F_box_y0":870,
-	"F_box_y1":900,
+	"F_box_y1":920,
+	"F_box_x0":135,
+	"F_box_x1":251,
+	"F_box_x2":365,
+	"F_box_x3":477,
+	"F_box_x4":592,
+	"F_box_x5":703,
+	"F_box_x6":820,
+	
 	
 	"Fcolor2_x":310,
 	"Fcolor2_y":780,
@@ -71,4 +82,9 @@
 	"formatcolor_b":122,
 	"formatcolor_g":98,
 	"formatcolor_r":64,
+	
+	"line1_y":896,
+	"line1_x1":135,
+	"line1_x2":1780,
+	
 }
