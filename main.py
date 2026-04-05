@@ -2,6 +2,7 @@ print("系统初始化中……")
 import sys
 import os
 import platform
+
 print("时钟载入中……")
 import datetime
 import time
@@ -10,6 +11,7 @@ import subprocess
 print("算术逻辑载入中……")
 import numpy as np
 import pandas as pd
+import random
 print("存取模块载入中……")
 import copy
 import shutil
@@ -17,8 +19,7 @@ import configparser
 import csv
 import json
 from string import punctuation
-print("视觉模块载入中……")
-import cv2
+
 print("神经网络载入中……")
 from paddleocr import PPStructure
 from paddleocr import PaddleOCR, draw_ocr
@@ -32,9 +33,18 @@ from tkinter import filedialog, messagebox
 from PySide6.QtWidgets import *
 from PySide6.QtGui import *
 from PySide6.QtCore import *
+import ctypes
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("starter")
 
 from qt_material import apply_stylesheet
 from pn_utils import pn_utils
+
+print("模块优先级重定位中……")
+sys.path.insert(0,'./_internal')
+print("视觉模块载入中……" )
+import cv2
+print("        opencv路径：" + cv2.__file__ )
+
 print("______  _       ___   _   _   ___   ")
 print("| ___ \| |     / _ \ | \ | | / _ \  ")
 print("| |_/ /| |    / /_\ \|  \| |/ /_\ \ ")
@@ -43,13 +53,14 @@ print("| |    | |____| | | || |\  || | | | ")
 print("\_|    \_____/\_| |_/\_| \_/\_| |_/ ")
 
 print("")
+print("普拉娜引导完成，尝试读入数据表……")
 
 
 
 url = os.path.dirname(os.path.abspath(__file__))
 web_url = 'http://plana.ink'
 os.environ["QT_FONT_DPI"] = "96"
-ba_token = "xx:xx" 
+ba_token = "xxx:xxx" 
 
 widgets = None
 
@@ -76,10 +87,15 @@ class MainWindow(QWidget):
 		if self.server_la == 'SC':
 			self.ocr = PaddleOCR(lang="ch", use_angle_cls=False, show_log=False)
 		self.initUI()
-
+		
+		self.last_tablepath = self.cf.get("filepath","last_tablepath")
+		if self.last_tablepath != '':
+			self.fname = self.last_tablepath
+			self.preprocess_table()
+	
 	def initUI(self):
 		self.resize(1280, 720)  
-		self.setWindowTitle('普拉娜的笔记本 v1.5.6')
+		self.setWindowTitle('普拉娜的笔记本 v1.5.8')
 		#self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.setAcceptDrops(True)			
 		
@@ -445,6 +461,11 @@ class MainWindow(QWidget):
 			result = ''
 		finally: 
 			return result
+			
+	def img_preprocess(self, img):
+		if img is not None and len(img.shape) == 3 and img.shape[2] == 4:
+			img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+		return img
 	
 	def ocr_jp(self, file_path, img_path, isBulk):
 		print('record: ' + file_path)
@@ -455,7 +476,8 @@ class MainWindow(QWidget):
 			print("invaild csv path!")
 		else:
 			ocr = PaddleOCR(use_angle_cls=True, lang="japan", show_log=False)
-			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_COLOR)
+			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+			#img = self.img_preprocess(img)
 			cv2.rectangle(img, (1800,790),(1000,870),(216,225,256), -1)
 			#cv2.rectangle(img, (140,790),(810,870),(246,247,247), -1)
 			cv2.rectangle(img, (1480,250),(1570,300),(216,225,256), -1)
@@ -469,7 +491,7 @@ class MainWindow(QWidget):
 				for i in range(len(result0[0])):
 					res0 = res0 + result0[0][i][1][0]
 				new_res0 = ''.join(i for i in res0 if i.isalnum())
-			except IndexError: 
+			except (IndexError, TypeError): 
 				new_res0 = ''
 				
 			try:
@@ -479,7 +501,7 @@ class MainWindow(QWidget):
 				for i in range(len(result1[0])):
 					res1 = res1 + result1[0][i][1][0]
 				new_res1 = ''.join(i for i in res1 if i.isalnum())
-			except IndexError: 
+			except (IndexError, TypeError):
 				new_res1 = ''
 
 			try:
@@ -489,17 +511,19 @@ class MainWindow(QWidget):
 				for i in range(len(result2[0])):
 					res2 = res2 + result2[0][i][1][0]
 				new_res2 = ''.join(i for i in res2 if i.isalnum())
-			except IndexError: 
+			except (IndexError, TypeError): 
 				new_res2 = ''
 
 			try:
 				img3 = img[795:920,475:590]
 				res3 = ''
 				result3 = ocr.ocr(img3, cls=True)
+				print("result3:")
+				print(result3)
 				for i in range(len(result3[0])):
 					res3 = res3 + result3[0][i][1][0]
 				new_res3 = ''.join(i for i in res3 if i.isalnum())
-			except IndexError: 
+			except (IndexError, TypeError):
 				new_res3 = ''
 
 			try:
@@ -509,7 +533,7 @@ class MainWindow(QWidget):
 				for i in range(len(result4[0])):
 					res4 = res4 + result4[0][i][1][0]
 				new_res4 = ''.join(i for i in res4 if i.isalnum())
-			except IndexError: 
+			except (IndexError, TypeError):
 				new_res4 = ''
 
 			try:
@@ -519,7 +543,7 @@ class MainWindow(QWidget):
 				for i in range(len(result5[0])):
 					res5 = res5 + result5[0][i][1][0]
 				new_res5 = ''.join(i for i in res5 if i.isalnum())
-			except IndexError: 
+			except (IndexError, TypeError):
 				new_res5 = ''
 
 			print(new_res0+' '+new_res1+' '+new_res2+' '+new_res3+' '+new_res4+' '+new_res5)
@@ -578,7 +602,7 @@ class MainWindow(QWidget):
 				result_u = ocr.ocr(img_u, cls=True)
 				new_res_u = result_u[0][0][1][0]
 				new_winflag = result_u[0][-1][1][0]
-			except IndexError: 
+			except (IndexError, TypeError):
 				new_res_u = ''
 				new_winflag = 'Win'
 			print(new_winflag)
@@ -598,7 +622,7 @@ class MainWindow(QWidget):
 				for i in range(len(em_result0[0])):
 					em_res0 = em_res0 + em_result0[0][i][1][0]
 				em_new_res0 = ''.join(i for i in em_res0 if i.isalnum())
-			except IndexError: 
+			except (IndexError, TypeError):
 				em_new_res0 = ''
 				
 			try:
@@ -608,7 +632,7 @@ class MainWindow(QWidget):
 				for i in range(len(em_result1[0])):
 					em_res1 = em_res1 + em_result1[0][i][1][0]
 				em_new_res1 = ''.join(i for i in em_res1 if i.isalnum())
-			except IndexError: 
+			except (IndexError, TypeError):
 				em_new_res1 = ''
 
 			try:
@@ -618,7 +642,7 @@ class MainWindow(QWidget):
 				for i in range(len(em_result2[0])):
 					em_res2 = em_res2 + em_result2[0][i][1][0]
 				em_new_res2 = ''.join(i for i in em_res2 if i.isalnum())
-			except IndexError: 
+			except (IndexError, TypeError):
 				em_new_res2 = ''
 
 			try:
@@ -628,7 +652,7 @@ class MainWindow(QWidget):
 				for i in range(len(em_result3[0])):
 					em_res3 = em_res3 + em_result3[0][i][1][0]
 				em_new_res3 = ''.join(i for i in em_res3 if i.isalnum())
-			except IndexError: 
+			except (IndexError, TypeError):
 				em_new_res3 = ''
 
 			try:
@@ -638,7 +662,7 @@ class MainWindow(QWidget):
 				for i in range(len(em_result4[0])):
 					em_res4 = em_res4 + em_result4[0][i][1][0]
 				em_new_res4 = ''.join(i for i in em_res4 if i.isalnum())
-			except IndexError: 
+			except (IndexError, TypeError):
 				em_new_res4 = ''
 
 			try:
@@ -648,7 +672,7 @@ class MainWindow(QWidget):
 				for i in range(len(em_result5[0])):
 					em_res5 = em_res5 + em_result5[0][i][1][0]
 				em_new_res5 = ''.join(i for i in em_res5 if i.isalnum())
-			except IndexError: 
+			except (IndexError, TypeError):
 				em_new_res5 = ''
 				
 			print(em_new_res0+' '+em_new_res1+' '+em_new_res2+' '+em_new_res3+' '+em_new_res4+' '+em_new_res5)
@@ -736,6 +760,7 @@ class MainWindow(QWidget):
 			print("ocr is running.")
 						
 			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_COLOR)
+			#img = self.img_preprocess(img)
 			cv2.rectangle(img, (1800,790),(1000,870),(216,225,256), -1)
 			cv2.rectangle(img, (140,790),(810,870),(246,247,247), -1)
 			cv2.rectangle(img, (1480,250),(1560,300),(216,225,256), -1)
@@ -980,7 +1005,9 @@ class MainWindow(QWidget):
 			print("ocr is running.")
 						
 			#img = cv2.imread(img_path)
-			#img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+			#img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_COLOR)
+			
+			#img = self.img_preprocess(img)
 			img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_COLOR)
 			cv2.rectangle(img, (int(param["cover0_x0"]),int(param["cover0_y0"])),(int(param["cover0_x1"]),int(param["cover0_y1"])),(int(param["cover_color_0b"]),int(param["cover_color_0g"]),int(param["cover_color_0r"])), -1)
 			cv2.rectangle(img, (int(param["cover1_x0"]),int(param["cover1_y0"])),(int(param["cover1_x1"]),int(param["cover1_y1"])),(int(param["cover_color_1b"]),int(param["cover_color_1g"]),int(param["cover_color_1r"])), -1)
@@ -1423,9 +1450,15 @@ class MainWindow(QWidget):
 			plana_query_url = '<a href="' + str(plana_query_list) + '">超级普拉查询</a>'
 			arona_query_url = '<a href="' + str(arona_query_list) + '">什亭之匣查询</a>'
 			
-			edit_url = "edit--" + str(df_img.index[num])
-			
 			query_word = '<br>' + plana_query_url + '<br><br>' + arona_query_url
+			
+			edit_list = "edit--" + str(df_img.index[num])
+			search_list = "search--" + df_img.iloc[num,9] + "--" + df_img.iloc[num,10] + "--" + df_img.iloc[num,11] + "--" + df_img.iloc[num,12]
+			
+			edit_url = '<a href="' + str(edit_list) + '">修改</a>'
+			search_url ='<a href="' + str(search_list) + '">本地查询</a>'
+			
+			edit_word = '<br>' + edit_url + '<br><br>' + search_url
 			
 			template_data = Template(template_string_data)
 			html_data = template_data.render(
@@ -1450,7 +1483,7 @@ class MainWindow(QWidget):
 				Me = '<br><br>' + '我的阵容',
 				Note = note_word,
 				space = '',
-				Edit = '<br><a href="' + str(edit_url) + '">修改</a>'
+				Edit = edit_word
 			)
 			self.content.append(html_data)
 			self.content.append('\n')
@@ -1487,6 +1520,9 @@ class MainWindow(QWidget):
 			self.signal_setbattlelist.emit(battle_list, self.fname, method, row)
 			if confirm_dialog.exec() == QDialog.Accepted:
 				pass
+				
+		elif list[0] == 'search':
+			self.get_query(['1NoData', '任意', '任意', '1NoData', '1NoData', '1NoData', '1NoData', '1NoData', '1NoData', list[1], list[2], list[3], list[4], '1NoData', '1NoData', ''])
 				
 		elif list[0] == 'arona':
 			sc_list = [] 
@@ -1612,29 +1648,13 @@ class MainWindow(QWidget):
 		else:
 			self.fname = fname_r
 			print(self.fname)
-			df = pd.read_csv(self.fname)		
-			if list(df) != ['UserId', 'Date', 'FAttacker1', 'FAttacker2', 'FAttacker3', 'FAttacker4', 'FSpecial1', 'FSpecial2', 'Formation', 'EAttacker1', 'EAttacker2', 'EAttacker3', 'EAttacker4', 'ESpecial1', 'ESpecial2', 'Result', 'Note', 'Title', 'Link', 'Bv', 'Check']:
-				block_list =[]
-				for i in range(len(df)):
-					block_list.append('')
-				df['Note'] = block_list
-				df['Title'] = block_list
-				df['Link'] = block_list
-				df['Bv'] = block_list
-				df['Check'] = block_list
-				df.to_csv(self.fname, index=False)
-				print('The file format has been updated.')
-				
-			self.content.clear()
-			df_img = df
-			self.df_output = df_img
-		
-			if option == 1:
-				self.currentpage = -1
-				self.show_csv(df_img)
-				winrate = '{:.2%}'.format(self.cal_winrate(df_img))
-				new_wr_word = ' 胜率：' + winrate + " （总数：" + str(len(df_img)) + "）"	
-				self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')	
+			
+			self.cf.set('filepath','last_tablepath', self.fname)
+			with open('./conf.ini', 'w', encoding="utf-8") as configfile:
+				self.cf.write(configfile)
+			configfile.close()
+			
+			self.preprocess_table()
 				
 	def refresh_table(self):
 		if self.fname == '' :
@@ -1652,7 +1672,38 @@ class MainWindow(QWidget):
 			winrate = '{:.2%}'.format(self.cal_winrate(df_img))
 			new_wr_word = ' 胜率：' + winrate + " （总数：" + str(len(df_img)) + "）"	
 			self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')
+	
+	def preprocess_table(self, option = 1):
+		df = pd.read_csv(self.fname)		
+		if list(df) != ['UserId', 'Date', 'FAttacker1', 'FAttacker2', 'FAttacker3', 'FAttacker4', 'FSpecial1', 'FSpecial2', 'Formation', 'EAttacker1', 'EAttacker2', 'EAttacker3', 'EAttacker4', 'ESpecial1', 'ESpecial2', 'Result', 'Note', 'Title', 'Link', 'Bv', 'Check']:
+			block_list =[]
+			for i in range(len(df)):
+				block_list.append('')
+			df['Note'] = block_list
+			df['Title'] = block_list
+			df['Link'] = block_list
+			df['Bv'] = block_list
+			df['Check'] = block_list
+			df.to_csv(self.fname, index=False)
+			print('The file format has been updated.')
 			
+		self.content.clear()
+		df_img = df
+		self.df_output = df_img
+		
+		file_path_name = self.fname.split('/')
+		csv_name = file_path_name[len(file_path_name)-1]
+		new_csv_name = csv_name.split('.')
+		table_name = new_csv_name[0]
+		
+		if option == 1:
+			self.currentpage = -1
+			self.show_csv(df_img)
+			self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ table_name+'</h2>')	
+			winrate = '{:.2%}'.format(self.cal_winrate(df_img))
+			new_wr_word = ' 胜率：' + winrate + " （总数：" + str(len(df_img)) + "）"	
+			self.content.append('<table border="0" align="center" style="background-color: rgba(255, 255, 255, 0.5);" ><tr><td><font color="black"><h2>'+ new_wr_word+'</h2>')	
+	
 	def replace_id(self, event):
 		if self.fname == '' :
 			the_dialog = NoCsvOpenDialog()
@@ -1975,6 +2026,7 @@ class MainWindow(QWidget):
 					logs.append(img_path)
 					
 			self.refresh_table()
+			'''
 			if logs == []:
 				print('Done!')
 				bulk_dialog = BulkOKDialog()
@@ -1989,15 +2041,17 @@ class MainWindow(QWidget):
 				self.signal_bulklog.emit(logs)
 				if bulk_dialog.exec() == QDialog.Accepted:
 					pass
+			'''
 					
 	def get_watchlist(self, img_names):
 		if img_names == []:
 			print('No pics!')
 		else:
 			file_path = str(self.fname)
-			
+			time.sleep(0.5)
 			for img_path in img_names:
 				img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_COLOR)
+				#img = self.img_preprocess(img)
 				height, width = img.shape[:2]
 				if height != 1080:
 					print("分辨率非法！")
@@ -2233,11 +2287,10 @@ class MainWindow(QWidget):
 				#print(UserId_word)
 				self.content.append(html_data)
 				
-
+			self.content.moveCursor(QTextCursor.Start)
 			self.content.anchorClicked.disconnect()
 			self.content.anchorClicked.connect(self.showCsvLink_clicked)
 			
-
 	def show_settings(self, event):
 		settings_dialog = SettingsDialog()
 		if settings_dialog.exec() == QDialog.Accepted:
@@ -2461,7 +2514,7 @@ class MainWindow(QWidget):
 			self.content.append(sytle_str + '<font color="black"><h2>本赛季你参与了 ' + str(sts_total) + ' 次战术大赛，综合胜率为 ' + winrate_str + ' 。</h2></font>')
 			self.content.append(sytle_str + '<font color="black"><h2>在 ' + str(most_date_value) + ' ，你根了 ' + str(most_date_count) + ' 次，那天一定刻苦铭心。我根似泥！</h2></font><br>')
 			self.content.append(sytle_str + '<font color="black"><h2>其中你带大瞬参加了 ' + str(shun_count) + ' 场，携带率为 ' + shunrate_str + ' 。</h2></font>')
-			self.content.append(sytle_str + '<font color="black"><h2>你使用了 ' + str(push_count) + ' 次跑速，跑速率为 ' + pushrate_str + ' ，还记得开春时候的二三跑月吗？</h2></font><br>')
+			self.content.append(sytle_str + '<font color="black"><h2>你使用了 ' + str(push_count) + ' 次跑速，跑速率为 ' + pushrate_str + ' ，还记得25年开春时候的二三跑月吗？</h2></font><br>')
 			
 			id_value = df.iloc[:, 0].value_counts().idxmax()
 			id_count = df.iloc[:, 0].value_counts().max()
@@ -2588,6 +2641,24 @@ class MainWindow(QWidget):
 
 				self.content.moveCursor(QTextCursor.Start)	
 	
+	def diff_last2(self):
+		#if equal, output 0
+		if self.fname == '':
+			print("未读取记录表。")
+			return 1
+		else:
+			df = pd.read_csv(self.fname)
+			if len(df) <= 1:
+				return 0
+			last_two = df.tail(2)
+			
+			check_list = ['UserId', 'EAttacker1', 'EAttacker2', 'EAttacker3', 'EAttacker4', 'ESpecial1', 'ESpecial2']
+			for col in check_list:
+				if last_two[col].iloc[0] != last_two[col].iloc[1]:
+					return 1
+			return 0 
+		
+
 	''' old methods
 	def upload_table(self, event):
 		fname_r, fpath= QFileDialog.getOpenFileName(self, '选择csv记录', './table', '*.csv')
@@ -3780,8 +3851,8 @@ class BulkLogDialog(QDialog):
 		self.btnOk.clicked.connect(self.close)
 		
 	def get_logs(self, logs):
-		print('get logs:')
-		print(logs)	
+		#print('get logs:')
+		#print(logs)	
 		self.content = QTextBrowser()
 		self.content.setReadOnly(True)
 		self.content.setOpenLinks(True)
@@ -3842,11 +3913,12 @@ class ADBDialog(QDialog):
 	def initUI(self):
 		self.setWindowFlags(Qt.WindowCloseButtonHint & Qt.WindowMaximizeButtonHint)
 		self.resize(640, 460)  
-		self.setWindowTitle('自动读取作战记录')
+		self.setWindowTitle('自动化工具')
 		self.setAcceptDrops(True)
 		
 		self.btnTurnPage = QPushButton('自动翻表',self)
 		self.btnAutoGuide = QPushButton('自动教学',self)
+		self.btnAutoJjc = QPushButton('自动堆场',self)
 		self.lineEdit_count = QLineEdit(self)
 		self.label_count = QLabel('执行次数', self)
 		self.content = QTextBrowser()
@@ -3857,6 +3929,7 @@ class ADBDialog(QDialog):
 		
 		vbox.addWidget(self.btnTurnPage)
 		vbox.addWidget(self.btnAutoGuide)
+		vbox.addWidget(self.btnAutoJjc)
 		vbox.addWidget(self.label_count)
 		vbox.addWidget(self.lineEdit_count)
 		vbox.addStretch(1)
@@ -3865,10 +3938,12 @@ class ADBDialog(QDialog):
 		
 		self.btnTurnPage.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.btnAutoGuide.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
+		self.btnAutoJjc.setStyleSheet("background-color : rgba(255, 255, 255, 50)")
 		self.lineEdit_count.setText("5")
 		
 		self.btnTurnPage.clicked.connect(self.adb_link1)
 		self.btnAutoGuide.clicked.connect(self.adb_link2)
+		self.btnAutoJjc.clicked.connect(self.adb_link_jjc)
 		
 		self.content.append("自动翻表用于自动向下翻阅对局历史，请将模拟器保持在对局记录页，将首条要保存的对局项完整地置于顶部，请勿仅显示一半。点击‘连接’开始翻阅，国服由于对局记录乱位慎用。次数请勿超过10次。\n")
 		self.content.append("自动教学用于刷取教学-1。\n")
@@ -3884,6 +3959,115 @@ class ADBDialog(QDialog):
 	def get_file_name(self, file_path):
 		self.fname = file_path
 		
+	def adb_link_jjc(self):
+		try:
+			battle_count, target_rank = self.lineEdit_count.text().split("-")
+			print(battle_count, target_rank)
+		except: 
+			print("格式非法")
+			self.content.append("格式非法")
+			return
+			
+		print("注意：堆场中。一旦待测试目标名次不存在或目标阵容变动，则会停止运行。")
+		self.total_count = 0
+		self.win_count = 0
+	
+		self.ocr = PaddleOCR(lang="ch", show_log=False)
+		self.content.append("尝试连接……")
+		
+		res_connect = self.try_connect()
+		if res_connect == 0:
+			self.content.append("连接成功")
+		else:
+			self.content.append("连接失败")
+			return
+			
+		self.try_shell()
+		
+		for i in range(int(battle_count)):
+			if(self.isTcPage() == 1):
+				return
+			
+			rank_list = self.getTcLastList()
+			print(rank_list)
+				
+			if int(target_rank) == rank_list[0]:
+				self.rapid_click(970, 360, 1, 30)
+			elif int(target_rank) == rank_list[1]:
+				self.rapid_click(970, 600, 1, 30)
+			elif int(target_rank) == rank_list[2]:
+				self.rapid_click(970, 840, 1, 30)
+			else:
+				print("未找到指定目标，程序回退。")
+				self.content.append("未找到指定目标，程序回退。")
+				return
+				
+			if(self.isBattleOpponent() == 1):
+				return
+			self.rapid_click(960, 855, 1, 20)
+			self.sleepRandomly(2)
+			
+			if(self.isBuyTicket() == 0):
+				self.rapid_click(1150, 755, 1, 20)
+				self.sleepRandomly(1)
+				self.rapid_click(960, 850, 1, 20)
+			self.sleepRandomly(2)
+			
+			if(self.cancelSkipBattle() == 1):
+				return
+				
+			self.rapid_click(1750, 1000, 1, 15)
+			self.sleepRandomly(20)
+			self.rapid_click(1860, 70, 10, 10)
+			self.sleepRandomly(10)
+			
+			self.rapid_click(1585, 1000, 1, 10)
+			self.sleepRandomly(0.1)
+			self.rapid_click(1800, 1000, 1, 10)
+			self.sleepRandomly(15)
+			
+			subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/auotjjc.png"],encoding="utf-8")
+			self.sleepRandomly(1)
+			subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/"+ "auotjjc" +".png",self.screenshots_cache_path],encoding="utf-8")
+			img = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "auotjjc" +".png", dtype=np.uint8), cv2.IMREAD_COLOR)
+			#img = self.img_preprocess(img)
+			pixel_value1 = img[400,1600].tolist()
+			print(pixel_value1)
+			if pixel_value1[0] < 211 or pixel_value1[0] > 221 or pixel_value1[1] < 219 or pixel_value1[1] > 229 or pixel_value1[2] < 249 or pixel_value1[2] > 259:
+			#if pixel_value1 != [216, 224, 254, 255]:
+				print("未检测出战报页")
+				return 
+
+			self.rapid_click(960, 1000, 1, 10)
+			self.sleepRandomly(1)
+			
+			self.rapid_click(960, 1000, 1, 10)
+			self.sleepRandomly(0.1)
+			self.rapid_click(1750, 1000, 1, 10)
+			
+			self.sleepRandomly(3)
+			self.rapid_click(960, 1000, 1, 10)
+			
+			img_name = os.path.abspath(self.screenshots_cache_path + "auotjjc" + ".png")
+			img_name = img_name.replace("\\", "/")
+			abs_img_names = [img_name]
+			self.signal_setimglist.emit(abs_img_names)
+			
+			self.total_count += 1
+			if self.total_count != 1:
+				change_flag = window.diff_last2()
+				if change_flag == 1:
+					return
+			if self.total_count == int(battle_count):
+				print("完成")
+			
+
+			self.sleepRandomly(15)
+		
+	def sleepRandomly(self, sleep_sec):
+		final_sec = sleep_sec + (random.randint(0, sleep_sec*100))/1000
+		time.sleep(final_sec)
+		
 	def isStandardResolution(self, height, width, img):
 		img_height, img_width = img.shape[:2]
 		if height != 1080:
@@ -3893,11 +4077,83 @@ class ADBDialog(QDialog):
 			print("分辨率非法！")
 			return 1
 		return 0
-		
-	def isBattleComplete(self):
-		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+	
+	def cancelSkipBattle(self):
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
 		time.sleep(1)
-		subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
+		
+		pixel_value = img1[1000,1680].tolist()
+		if self.isPixelValue(pixel_value, 74, 232, 246) == 1:
+			print("不位于编队页")
+			return 1
+		else:
+			print("定位到编队页")
+		
+		pixel_hook = img1[915,1680].tolist()
+		if self.isPixelValue(pixel_hook, 252, 234, 84) == 0:
+			print("跳过生效中，取消")
+			self.rapid_click(1680, 915, 1, 2)
+			time.sleep(1)
+			return 0
+		elif self.isPixelValue(pixel_hook, 188, 156, 112) == 0:
+			print("跳过未生效")
+			time.sleep(1)
+			return 0
+		else:
+			print("异常")
+			return 1
+		
+		
+	def isTcPage(self):
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		time.sleep(1)
+		subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
+		
+		if(self.isStandardResolution(1080, 1920, img1) == 1):
+			return 1
+			
+		pixel_value = img1[475,555].tolist()
+		print(pixel_value)
+		pixel_value1 = img1[230,1250].tolist()
+		print(pixel_value1)
+		if self.isPixelValue(pixel_value, 99, 70, 45) == 1 or self.isPixelValue(pixel_value1, 244, 230, 190) == 1:
+			print("不位于战术大赛页")
+			return 1
+		else:
+			print("定位到战术大赛页")
+			return 0
+			
+	def getTcLastList(self):
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		time.sleep(1)
+		subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
+		
+		img_user1 = img1[290:380,835:1020]
+		rank_user1_str = self.patch_ocr_sc(img_user1)
+		print(rank_user1_str)
+		rank_user1 = ''.join(filter(str.isdigit, rank_user1_str)) 
+		
+		img_user2 = img1[535:620,835:1020]
+		rank_user2_str = self.patch_ocr_sc(img_user2)
+		print(rank_user2_str)
+		rank_user2 = ''.join(filter(str.isdigit, rank_user2_str)) 
+		
+		img_user3 = img1[770:855,835:1020]
+		rank_user3_str = self.patch_ocr_sc(img_user3)
+		print(rank_user3_str)
+		rank_user3 = ''.join(filter(str.isdigit, rank_user3_str)) 
+		
+		rank_list = [int(rank_user1), int(rank_user2), int(rank_user3)]
+		return rank_list
+			
+	def isBattleComplete(self):
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		time.sleep(1)
+		subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
 		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
 		
 		pixel_value = img1[1000,1805].tolist()
@@ -3911,17 +4167,51 @@ class ADBDialog(QDialog):
 			print("战斗已结束")
 			return 0
 
-	def isPixelValue(self, colorlist, B, G, R, allowance = 5):
+	def isPixelValue(self, colorlist, B, G, R, allowance = 6):
 		if colorlist[0] < B-allowance or colorlist[0] > B+allowance or colorlist[1] < G-allowance or colorlist[1] > G+allowance or colorlist[2] < R-allowance or colorlist[2] > R+allowance:
 			print("不满足颜色容差。")
 			return 1
 		else:
 			return 0
 			
-	def isHardMission(self):
-		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+	def isBuyTicket(self):
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
 		time.sleep(1)
-		subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
+		
+		pixel_value = img1[760,1050].tolist()
+		print(pixel_value)
+		pixel_value1 = img1[280,955].tolist()
+		print(pixel_value1)
+		if self.isPixelValue(pixel_value, 74, 232, 246) == 1 or self.isPixelValue(pixel_value1, 98, 239, 252) == 1:
+			print("不位于买票页")
+			return 1
+		else:
+			print("定位到买票页")
+			return 0
+	
+	def isBattleOpponent(self):
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		time.sleep(1)
+		subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
+		
+		pixel_value = img1[475,400].tolist()
+		print(pixel_value)
+		pixel_value1 = img1[875,840].tolist()
+		print(pixel_value1)
+		if self.isPixelValue(pixel_value, 235, 238, 239) == 1 or self.isPixelValue(pixel_value1, 248, 247, 244) == 1:
+			print("不位于战斗对手页")
+			return 1
+		else:
+			print("定位到战斗对手页")
+			return 0
+			
+	def isHardMission(self):
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		time.sleep(1)
+		subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
 		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
 			
 		pixel_value = img1[250,1050].tolist()
@@ -3934,26 +4224,35 @@ class ADBDialog(QDialog):
 		
 	def try_connect(self):
 		res_connect = subprocess.run([self.adb_path,"connect",self.adb_port], encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+		#res_connect = subprocess.run([self.adb_path,"connect","emulator-5554"], encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+		print(res_connect.stdout)
+		return 0
+		'''
 		if 'connected' in res_connect.stdout.lower() or 'already connected' in res_connect.stdout.lower():
 			return 0
 		else:
 			return 1
+		'''
 		
 	def try_shell(self):
-		res_shell = subprocess.Popen([self.adb_path,"-s",self.adb_port,"shell"], encoding="utf-8",text=True, stdout=subprocess.PIPE)
+		#res_shell = subprocess.Popen([self.adb_path,"-s",self.adb_port,"shell"], encoding="utf-8",text=True, stdout=subprocess.PIPE)
+		res_shell = subprocess.Popen([self.adb_path,"-s","emulator-5554","shell"], encoding="utf-8",text=True, stdout=subprocess.PIPE)
 		print(res_shell.stdout)
 		print("尝试清空缓存……")
-		for filename in os.listdir(self.screenshots_cache_path):
-			file_path = os.path.join(self.screenshots_cache_path, filename)
-			if os.path.isfile(file_path) or os.path.islink(file_path):
-				os.unlink(file_path)
-			elif os.path.isdir(file_path):
-				shutil.rmtree(file_path)
+		try:
+			for filename in os.listdir(self.screenshots_cache_path):
+				file_path = os.path.join(self.screenshots_cache_path, filename)
+				if os.path.isfile(file_path) or os.path.islink(file_path):
+					os.unlink(file_path)
+				elif os.path.isdir(file_path):
+					shutil.rmtree(file_path)
+		except:
+			print("清除失败")
 			
 	def loop_screenshots(self):
-		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
 		time.sleep(0.1)
-		subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
 		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
 		
 		if(self.isStandardResolution(1080, 1920, img1) == 1):
@@ -3976,11 +4275,11 @@ class ADBDialog(QDialog):
 		'''	
 		
 		for i in range(int(self.lineEdit_count.text())-1, -1, -1):
-			subprocess.run([self.adb_path,"shell","input","tap","1422","388"],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "shell","input","tap","1422","388"],encoding="utf-8")
 			time.sleep(1)
-			subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/"+str(i)+".png"],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/"+str(i)+".png"],encoding="utf-8")
 			time.sleep(0.1)
-			subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/"+ str(i) +".png",self.screenshots_cache_path],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/"+ str(i) +".png",self.screenshots_cache_path],encoding="utf-8")
 			img = cv2.imdecode(np.fromfile(self.screenshots_cache_path + str(i) +".png", dtype=np.uint8), cv2.IMREAD_COLOR)
 			
 			pixel_value1 = img[400,1600].tolist()
@@ -3996,8 +4295,8 @@ class ADBDialog(QDialog):
 				print("未检测出战报页")
 				return 1
 
-			subprocess.run([self.adb_path,"shell","input","tap","1834","185"],encoding="utf-8")
-			subprocess.run([self.adb_path,"shell","input","swipe","517","581","517",str(581-self.readtable_swipe_distance),"500"],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "shell","input","tap","1834","185"],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "shell","input","swipe","517","581","517",str(581-self.readtable_swipe_distance),"500"],encoding="utf-8")
 			time.sleep(0.5)
 		return 0
 		
@@ -4065,7 +4364,7 @@ class ADBDialog(QDialog):
 				return 1
 			time.sleep(2)
 			self.start_mobilize()
-			time.sleep(20)
+			time.sleep(40)
 			self.rapid_click("1517","658",10)
 			time.sleep(4)
 			self.rapid_click("1517","658",8)
@@ -4075,16 +4374,16 @@ class ADBDialog(QDialog):
 			self.rapid_click("1805","1000",5)
 			time.sleep(3)
 			self.rapid_click("1160","1000",5)
-			time.sleep(3)
+			time.sleep(5)
 			print("第 " + str(i+1) + " 轮任务已完成。")
 		
 	def enter_TR1(self):
 		time.sleep(0.5)
-		subprocess.run([self.adb_path,"shell","input","tap","1670","515"],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","input","tap","1670","515"],encoding="utf-8")
 		time.sleep(0.5)
-		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
 		time.sleep(1)
-		subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
 		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
 		pixel_value = img1[415,1300].tolist()
 		if self.isPixelValue(pixel_value, 255, 173, 0) == 1:
@@ -4095,16 +4394,16 @@ class ADBDialog(QDialog):
 		
 	def start_mission(self):
 		time.sleep(1)
-		subprocess.run([self.adb_path,"shell","input","tap","955","755"],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","input","tap","955","755"],encoding="utf-8")
 		
 	def start_mobilize(self):
 		time.sleep(0.5)
-		subprocess.run([self.adb_path,"shell","input","tap","1735","1000"],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","input","tap","1735","1000"],encoding="utf-8")
 		print("开始战斗。")
 	
 	def swipe_MissionToTop(self):
 		for i in range(3):
-			subprocess.run([self.adb_path,"shell","input","swipe","1200","500","1200","800","500"],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "shell","input","swipe","1200","500","1200","800","500"],encoding="utf-8")
 			time.sleep(0.2)
 
 	def enter_MissionWithIndex(self, target_index):
@@ -4114,23 +4413,25 @@ class ADBDialog(QDialog):
 			return 0
 		if current_index < target_index:
 			print("执行翻页。")
-			subprocess.run([self.adb_path,"shell","input","tap","1860","535"],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "shell","input","tap","1860","535"],encoding="utf-8")
 			self.enter_MissionWithIndex(target_index)
 		if current_index > target_index:
 			print("执行翻页。")
-			subprocess.run([self.adb_path,"shell","input","tap","50","535"],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "shell","input","tap","50","535"],encoding="utf-8")
 			self.enter_MissionWithIndex(target_index)
 			
-	def rapid_click(self, x, y, counter):
+	def rapid_click(self, x, y, counter, allowance = 0):
 		for i in range(counter):
+			x_allowance = random.randint(-allowance, allowance)
+			y_allowance = random.randint(-allowance, allowance)
 			time.sleep(0.1)
-			subprocess.run([self.adb_path,"shell","input","tap",str(x), str(y)],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "shell","input","tap",str(int(x) + x_allowance), str(int(y) + y_allowance)],encoding="utf-8")
 		
 	def get_MissionArea(self):
 		time.sleep(0.5)
-		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
 		time.sleep(1)
-		subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
 		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
 
 		img2 = img1[220:280,275:500]
@@ -4141,11 +4442,11 @@ class ADBDialog(QDialog):
 		
 	def enter_Mission(self):
 		time.sleep(0.5)
-		subprocess.run([self.adb_path,"shell","input","tap","1200","350"],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","input","tap","1200","350"],encoding="utf-8")
 		time.sleep(2)
-		subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
 		time.sleep(1)
-		subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+		subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
 		img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
 		
 		pixel_value = img1[210,150].tolist()
@@ -4162,11 +4463,11 @@ class ADBDialog(QDialog):
 		for i in range(4):
 			self.content.append(f"第 {i+1} 次尝试进入工作区，")
 			time.sleep(0.5)
-			subprocess.run([self.adb_path,"shell","input","tap","1800","850"],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "shell","input","tap","1800","850"],encoding="utf-8")
 			time.sleep(2)
-			subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
 			time.sleep(1)
-			subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
 			img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
 			
 			if(self.isStandardResolution(1080, 1920, img1) == 1):
@@ -4187,9 +4488,9 @@ class ADBDialog(QDialog):
 	
 	def back_homepage(self):
 		for i in range(5):
-			subprocess.run([self.adb_path,"shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "shell","screencap","/storage/emulated/0/Screenshots/init.png"],encoding="utf-8")
 			time.sleep(1)
-			subprocess.run([self.adb_path,"pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
+			subprocess.run([self.adb_path, "-s", self.adb_port, "pull","/storage/emulated/0/Screenshots/init.png",self.screenshots_cache_path],encoding="utf-8")
 			img1 = cv2.imdecode(np.fromfile(self.screenshots_cache_path + "init.png", dtype=np.uint8), cv2.IMREAD_COLOR)
 			
 			if(self.isStandardResolution(1080, 1920, img1) == 1):
@@ -4203,7 +4504,7 @@ class ADBDialog(QDialog):
 				self.content.append("未检测到首页，尝试回到首页。")
 				print(f"第 {i+1} 次尝试，")
 				print("未检测到首页，尝试回到首页。")
-				subprocess.run([self.adb_path,"shell","input","tap","1850","35"],encoding="utf-8")
+				subprocess.run([self.adb_path, "-s", self.adb_port, "shell","input","tap","1850","35"],encoding="utf-8")
 				time.sleep(1)
 			else:
 				break
@@ -4284,7 +4585,8 @@ class WatcherDialog(QDialog):
 				print("New pic: " + file_path)
 				self.content.append("监听到新图片")
 				file_path = file_path.replace("\\", "/")
-				self.signal_setimgpath.emit([file_path])
+				print(file_path)
+				self.signal_setimgpath.emit([file_path])	
 		self.last_files = set(os.listdir(self.watcher_path))
 				
 	def is_image_file(self, file_name):

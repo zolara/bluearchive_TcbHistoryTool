@@ -6,7 +6,8 @@ set "ZIPFILE=lastest_data.zip"
 set "DESTINATION=."  
 
 echo 正在下载文件...
-curl -o "%ZIPFILE%" "%URL%" --silent --fail
+curl -o "%ZIPFILE%" "%URL%" --fail --progress-bar
+
 if %ERRORLEVEL% neq 0 (
     echo 下载失败，请检查网络连接或 URL 是否正确！
     exit /b 1
