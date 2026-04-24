@@ -3505,6 +3505,7 @@ class NewCsvDialog(QDialog):
 		if os.path.exists('./table/'  + file_name + '.csv'):
 			print('file Duplicate! Please change a file name.')
 		else:
+			os.makedirs('./table', exist_ok=True)
 			shutil.copy(src_file, dst_folder)
 				
 class DeleteDialog(QDialog):
